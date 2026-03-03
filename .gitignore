@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Mac/Windows
+.DS_Store
+Thumbs.db
+
+# Logs / HPC outputs
+*.out
+*.err
+slurm-*.out
+
+# Common large/binary artifacts
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.pkl
+*.pickle
+
+# Data + results (adjust to your structure)
+data/
+raw_data/
+outputs/
+checkpoints/

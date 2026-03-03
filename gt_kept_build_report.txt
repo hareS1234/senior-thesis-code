@@ -1,0 +1,135 @@
+GT-kept build report for root: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped
+style=hybrid  percent_retained=5.0  min_kept=200
+block=50  cond_thresh=10000000000000.0
+
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ssqvtq_nocap/ssqvtq_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gailss_nocap/gailss_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/nfgail_nocap/nfgail_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/sstnvg_nocap/sstnvg_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gaiigl_nocap/gaiigl_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ggvvia_nocap/ggvvia_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/mvggvv_nocap/mvggvv_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vvvvvv_nocap/vvvvvv_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/rrrrrr_nocap/rrrrrr_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/klvffa_nocap/klvffa_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kkkkkk_nocap/kkkkkk_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaaaaa_nocap/aaaaaa_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gyviik_nocap/gyviik_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/snqnnf_nocap/snqnnf_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/svsssy_nocap/svsssy_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/eeeeee_nocap/eeeeee_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vqivyk_nocap/vqivyk_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_19sb_nocap/markov_T300K
+status: SKIP_EXISTS
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_99idps_nocap/markov_T300K
+status: SKIP_EXISTS
+
+Done.

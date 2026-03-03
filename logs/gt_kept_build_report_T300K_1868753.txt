@@ -1,0 +1,393 @@
+GT-kept build report for root: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped
+style=hybrid  percent_retained=5.0  min_kept=200
+block=50  cond_thresh=10000000000000.0
+
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ssqvtq_nocap/ssqvtq_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 50477
+N_eff: 4882
+nA: 1   nB: 1
+rel_stationarity_eff: 2.071e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ssqvtq_nocap/ssqvtq_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gailss_nocap/gailss_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 66720
+N_eff: 6392
+nA: 1   nB: 1
+rel_stationarity_eff: 1.293e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gailss_nocap/gailss_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 25798
+N_eff: 2493
+nA: 1   nB: 1
+rel_stationarity_eff: 6.851e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 31718
+N_eff: 3051
+nA: 1   nB: 1
+rel_stationarity_eff: 6.475e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/nfgail_nocap/nfgail_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 30309
+N_eff: 2951
+nA: 1   nB: 1
+rel_stationarity_eff: 5.949e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/nfgail_nocap/nfgail_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/sstnvg_nocap/sstnvg_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 50096
+N_eff: 4854
+nA: 1   nB: 1
+rel_stationarity_eff: 1.055e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/sstnvg_nocap/sstnvg_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 49754
+N_eff: 4846
+nA: 1   nB: 1
+rel_stationarity_eff: 9.625e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 75766
+N_eff: 7238
+nA: 1   nB: 1
+rel_stationarity_eff: 5.224e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 69169
+N_eff: 6610
+nA: 1   nB: 1
+rel_stationarity_eff: 2.673e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 31266
+N_eff: 3005
+nA: 1   nB: 1
+rel_stationarity_eff: 3.240e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gaiigl_nocap/gaiigl_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 11713
+N_eff: 1128
+nA: 1   nB: 1
+rel_stationarity_eff: 2.133e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gaiigl_nocap/gaiigl_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ggvvia_nocap/ggvvia_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 22745
+N_eff: 2241
+nA: 1   nB: 1
+rel_stationarity_eff: 5.125e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ggvvia_nocap/ggvvia_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 39836
+N_eff: 3905
+nA: 1   nB: 1
+rel_stationarity_eff: 1.094e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 77429
+N_eff: 7454
+nA: 1   nB: 1
+rel_stationarity_eff: 5.754e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/mvggvv_nocap/mvggvv_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 23953
+N_eff: 2337
+nA: 1   nB: 1
+rel_stationarity_eff: 3.524e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/mvggvv_nocap/mvggvv_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vvvvvv_nocap/vvvvvv_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 34569
+N_eff: 3412
+nA: 1   nB: 1
+rel_stationarity_eff: 9.148e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vvvvvv_nocap/vvvvvv_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/rrrrrr_nocap/rrrrrr_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 32038
+N_eff: 3091
+nA: 1   nB: 1
+rel_stationarity_eff: 1.227e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/rrrrrr_nocap/rrrrrr_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/klvffa_nocap/klvffa_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 42286
+N_eff: 4083
+nA: 1   nB: 1
+rel_stationarity_eff: 1.157e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/klvffa_nocap/klvffa_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 80266
+N_eff: 7719
+nA: 1   nB: 1
+rel_stationarity_eff: 5.438e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 26519
+N_eff: 2540
+nA: 1   nB: 1
+rel_stationarity_eff: 4.386e-17
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kkkkkk_nocap/kkkkkk_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 58906
+N_eff: 5679
+nA: 1   nB: 1
+rel_stationarity_eff: 1.942e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kkkkkk_nocap/kkkkkk_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaaaaa_nocap/aaaaaa_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 33399
+N_eff: 3243
+nA: 1   nB: 1
+rel_stationarity_eff: 8.458e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaaaaa_nocap/aaaaaa_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gyviik_nocap/gyviik_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 41387
+N_eff: 4071
+nA: 1   nB: 1
+rel_stationarity_eff: 5.888e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gyviik_nocap/gyviik_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 35070
+N_eff: 3357
+nA: 1   nB: 1
+rel_stationarity_eff: 1.334e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 35345
+N_eff: 3408
+nA: 1   nB: 1
+rel_stationarity_eff: 6.359e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 10267
+N_eff: 997
+nA: 1   nB: 1
+rel_stationarity_eff: 5.680e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 9940
+N_eff: 968
+nA: 1   nB: 1
+rel_stationarity_eff: 1.327e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 14493
+N_eff: 1378
+nA: 1   nB: 1
+rel_stationarity_eff: 8.852e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 2821
+N_eff: 276
+nA: 1   nB: 1
+rel_stationarity_eff: 1.171e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 56303
+N_eff: 5373
+nA: 1   nB: 1
+rel_stationarity_eff: 1.075e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 32173
+N_eff: 3102
+nA: 1   nB: 1
+rel_stationarity_eff: 4.410e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/snqnnf_nocap/snqnnf_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 119078
+N_eff: 11588
+nA: 1   nB: 1
+rel_stationarity_eff: 5.418e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/snqnnf_nocap/snqnnf_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/svsssy_nocap/svsssy_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 42117
+N_eff: 4062
+nA: 1   nB: 1
+rel_stationarity_eff: 4.083e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/svsssy_nocap/svsssy_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 30360
+N_eff: 2972
+nA: 1   nB: 1
+rel_stationarity_eff: 9.474e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 48020
+N_eff: 4664
+nA: 1   nB: 1
+rel_stationarity_eff: 9.060e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 39843
+N_eff: 3895
+nA: 1   nB: 1
+rel_stationarity_eff: 1.664e-15
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 33069
+N_eff: 3169
+nA: 1   nB: 1
+rel_stationarity_eff: 5.549e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/eeeeee_nocap/eeeeee_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 29828
+N_eff: 2832
+nA: 1   nB: 1
+rel_stationarity_eff: 2.437e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/eeeeee_nocap/eeeeee_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vqivyk_nocap/vqivyk_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 50219
+N_eff: 4907
+nA: 1   nB: 1
+rel_stationarity_eff: 6.161e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vqivyk_nocap/vqivyk_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 41842
+N_eff: 3991
+nA: 1   nB: 1
+rel_stationarity_eff: 7.804e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_99idps_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 70183
+N_eff: 6754
+nA: 1   nB: 1
+rel_stationarity_eff: 2.581e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_19sb_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 59395
+N_eff: 5765
+nA: 1   nB: 1
+rel_stationarity_eff: 5.258e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_19sb_nocap/markov_T300K/GT_kept_T300K
+==========================================================================================
+/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_99idps_nocap/markov_T300K
+status: OK
+tag: T300K
+N: 79348
+N_eff: 7627
+nA: 1   nB: 1
+rel_stationarity_eff: 3.336e-16
+out_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_99idps_nocap/markov_T300K/GT_kept_T300K
+
+Done.

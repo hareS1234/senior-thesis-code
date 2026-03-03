@@ -1,0 +1,34 @@
+Micro vs Coarse GT validation report (T300K)
+root: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped
+total networks scanned: 43
+OK: 26   CHECK: 10   MISSING: 7
+
+MFPT relative error (A->B) over OK rows:
+  min=8.586e-14  median=1.894e-09  max=3.063e-07
+MFPT relative error (B->A) over OK rows:
+  min=8.981e-14  median=2.926e-09  max=2.501e-07
+
+Worst CHECK rows by relerr_AB:
+  vqivyk_nocap/vqivyk_99idps_nocap  relAB=0.000800317137790123  relBA=0.0007216426067753283  Qpi_rel=6.161051649891555e-16  comps=1.0  status=CHECK
+  snqnnf_nocap/snqnnf_99idps_nocap  relAB=0.0003747414936339814  relBA=0.01198507089051865  Qpi_rel=5.418382539026922e-16  comps=1.0  status=CHECK
+  ssqvtq_nocap/ssqvtq_99idps_nocap  relAB=0.000136007816539671  relBA=0.0021491885013103945  Qpi_rel=2.0709146625297463e-15  comps=1.0  status=CHECK
+  svsssy_nocap/svsssy_99idps_nocap  relAB=6.0537072132935076e-05  relBA=0.0002444660741427708  Qpi_rel=4.083329471294778e-16  comps=1.0  status=CHECK
+  gyviik_nocap/gyviik_99idps_nocap  relAB=1.5424078532700315e-05  relBA=7.210155634119613e-05  Qpi_rel=5.888309252698722e-16  comps=1.0  status=CHECK
+  kkkkkk_nocap/kkkkkk_99idps_nocap  relAB=3.393049114173245e-06  relBA=2.1911762742286265e-06  Qpi_rel=1.9423846042317436e-16  comps=1.0  status=CHECK
+  ryggyr_nocap/ryggyr_99idps_nocap  relAB=1.8448329055120195e-06  relBA=4.949497413266934e-06  Qpi_rel=5.754248611527752e-16  comps=1.0  status=CHECK
+  rrrrrr_nocap/rrrrrr_99idps_nocap  relAB=1.100735003674747e-06  relBA=1.0952438212426844e-06  Qpi_rel=1.2272406093764698e-16  comps=1.0  status=CHECK
+  regger_nocap/regger_19sb_nocap  relAB=5.097739784350329e-07  relBA=4.944330855264857e-06  Qpi_rel=2.581166741794363e-16  comps=1.0  status=CHECK
+  klvffa_nocap/klvffa_99idps_nocap  relAB=4.72681289252535e-07  relBA=1.0181363966290045e-06  Qpi_rel=1.1573251528077685e-15  comps=1.0  status=CHECK
+
+Missing cases:
+  vvvvvv_nocap/vvvvvv_99idps_nocap  status=MISSING_COARSE_AB
+  ykggky_nocap/ykggky_19sb_nocap  status=MISSING_MICRO_AB
+  ykggky_nocap/ykggky_99idps_nocap  status=MISSING_MICRO_AB
+  yrggry_nocap/yrggry_19sb_nocap  status=MISSING_MICRO_AB
+  yrggry_nocap/yrggry_99idps_nocap  status=MISSING_MICRO_AB
+  yyggyy_nocap/yyggyy_19sb_nocap  status=MISSING_MICRO_AB
+  yyggyy_nocap/yyggyy_99idps_nocap  status=MISSING_MICRO_AB
+
+Wrote:
+  CSV: /scratch/gpfs/JERELLE/harry/thesis_code/GTcheck_micro_vs_coarse_T300K_full.csv
+  TXT: /scratch/gpfs/JERELLE/harry/thesis_code/GTcheck_micro_vs_coarse_T300K_summary.txt

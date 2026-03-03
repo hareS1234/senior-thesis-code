@@ -1,0 +1,563 @@
+Micro KTN report for root: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped
+Found 43 markov_T*K folders
+
+Status counts:
+  OK                   43
+
+================================================================================
+aaaaaa_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaaaaa_nocap/aaaaaa_99idps_nocap/markov_T300K
+status    : OK
+N         : 33399   nnz(Q): 134737   nnz/state: 4.03416269948202
+pi sum    : 1.0000000000000002   min: 1.1529015713501923e-21   max: 0.10704535798230898
+max|colsum|: 0.0263671875   max|rowsum|: 157865315906905.22
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0033290815107521374  rel=1.112082427143136e-15
+A/B        : nA=1 (idx 340)   nB=1 (idx 0)   overlap=0
+MFPTs      : A->B=2.441732236557019e-08   B->A=2.1184055409514077e-10
+Vars       : Var_AB=1.2734277461275493e-15   Var_BA=6.5375467785130885e-18
+
+================================================================================
+aaggaa_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_19sb_nocap/markov_T300K
+status    : OK
+N         : 9940   nnz(Q): 49002   nnz/state: 4.929778672032193
+pi sum    : 1.0   min: 7.302490868011899e-90   max: 0.022611677569125854
+max|colsum|: 0.0150146484375   max|rowsum|: 208953667900046.6
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0026402620252784737  rel=1.1153682583855531e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=1.8322683077251e-07   B->A=1.6627849094780305e-09
+Vars       : Var_AB=6.981060877482635e-14   Var_BA=5.136854294048805e-17
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/aaggaa_nocap/aaggaa_99idps_nocap/markov_T300K
+status    : OK
+N         : 10267   nnz(Q): 37903   nnz/state: 3.6917307879614296
+pi sum    : 1.0   min: 6.559926144112588e-20   max: 0.07925786362943131
+max|colsum|: 0.009235382080078125   max|rowsum|: 163144033101200.25
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0026568860737231164  rel=1.0677119269982888e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=3.19067175998189e-10   B->A=1.5566851767757291e-09
+Vars       : Var_AB=9.520200791641354e-16   Var_BA=3.993603535351328e-15
+
+================================================================================
+eeeeee_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/eeeeee_nocap/eeeeee_99idps_nocap/markov_T300K
+status    : OK
+N         : 29828   nnz(Q): 104232   nnz/state: 3.4944347592865763
+pi sum    : 1.0   min: 2.8790848816230606e-23   max: 0.05481630861744411
+max|colsum|: 0.12109375   max|rowsum|: 1121841982294796.0
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0024392711468859945  rel=1.5140260084493385e-15
+A/B        : nA=1 (idx 358)   nB=1 (idx 0)   overlap=0
+MFPTs      : A->B=4.821749328306293e-05   B->A=8.300096828841893e-05
+Vars       : Var_AB=1.3999901213038417e-06   Var_BA=1.704410550386386e-05
+
+================================================================================
+ffggff_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_19sb_nocap/markov_T300K
+status    : OK
+N         : 35345   nnz(Q): 140663   nnz/state: 3.9797142452963645
+pi sum    : 1.0   min: 1.3639902847962123e-106   max: 0.0480171646934001
+max|colsum|: 0.03125   max|rowsum|: 343400317286499.7
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0022672118401348413  rel=1.0456559181078848e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 556)   overlap=0
+MFPTs      : A->B=1.7685989024447506e-10   B->A=7.398562278371484e-10
+Vars       : Var_AB=1.04610638899107e-13   Var_BA=4.975596186726132e-13
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ffggff_nocap/ffggff_99idps_nocap/markov_T300K
+status    : OK
+N         : 35070   nnz(Q): 127678   nnz/state: 3.6406615340747077
+pi sum    : 0.9999999999999998   min: 2.061951894203353e-18   max: 0.04029711903258828
+max|colsum|: 0.16943359375   max|rowsum|: 2606665233581673.0
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0013007258368548302  rel=1.251060190059954e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=5.824836171050658e-08   B->A=3.3967620421148396e-08
+Vars       : Var_AB=2.3630480341372242e-08   Var_BA=1.6182686022880626e-08
+
+================================================================================
+flgglf_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_19sb_nocap/markov_T300K
+status    : OK
+N         : 39843   nnz(Q): 150309   nnz/state: 3.772532188841202
+pi sum    : 1.0   min: 6.226997578094155e-19   max: 0.0287236541278193
+max|colsum|: 0.015625   max|rowsum|: 247973665905702.8
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0024141497890957635  rel=1.0556711028170306e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=2.6099036499283696e-11   B->A=5.6065508998600616e-11
+Vars       : Var_AB=1.5367509971020622e-14   Var_BA=3.166423471798458e-14
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/flgglf_nocap/flgglf_99idps_nocap/markov_T300K
+status    : OK
+N         : 33069   nnz(Q): 135221   nnz/state: 4.089056215791224
+pi sum    : 0.9999999999999998   min: 1.3032515093018717e-20   max: 0.06794717433226258
+max|colsum|: 0.078125   max|rowsum|: 766876241244684.0
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0024176917618825545  rel=1.4038023922921995e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=1.0973166333536688e-08   B->A=8.223680539649319e-07
+Vars       : Var_AB=3.206419130183055e-12   Var_BA=3.866344711308042e-10
+
+================================================================================
+gaiigl_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gaiigl_nocap/gaiigl_99idps_nocap/markov_T300K
+status    : OK
+N         : 11713   nnz(Q): 48097   nnz/state: 4.106292154016904
+pi sum    : 1.0   min: 3.255926698516362e-19   max: 0.04039093434653046
+max|colsum|: 0.0078125   max|rowsum|: 108778690428298.34
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.001226511090319324  rel=1.0504560216178362e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=3.779075653046468e-09   B->A=6.543972242252617e-11
+Vars       : Var_AB=2.7789287827891423e-11   Var_BA=1.1384452070435666e-12
+
+================================================================================
+gailss_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gailss_nocap/gailss_99idps_nocap/markov_T300K
+status    : OK
+N         : 66720   nnz(Q): 250438   nnz/state: 3.7535671462829736
+pi sum    : 1.0   min: 6.483570635691729e-22   max: 0.022179997692549247
+max|colsum|: 0.07065224647521973   max|rowsum|: 541206174910279.6
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0032409198654026325  rel=1.0822316307652747e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=2.0244866320592243e-09   B->A=1.678247188776201e-08
+Vars       : Var_AB=5.481627943854554e-13   Var_BA=2.5557518210631277e-12
+
+================================================================================
+gggggg_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_19sb_nocap/markov_T300K
+status    : OK
+N         : 2821   nnz(Q): 9989   nnz/state: 3.5409429280397022
+pi sum    : 1.0000000000000002   min: 4.282479440462335e-85   max: 0.03578570699051415
+max|colsum|: 0.004536256194114685   max|rowsum|: 52052247207105.12
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.001489456333254393  rel=1.2303580072490116e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=6.544153201192892e-08   B->A=2.4482986916602473e-06
+Vars       : Var_AB=6.637063071336963e-14   Var_BA=8.208068381699713e-11
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gggggg_nocap/gggggg_99idps_nocap/markov_T300K
+status    : OK
+N         : 14493   nnz(Q): 57817   nnz/state: 3.9893051818119094
+pi sum    : 0.9999999999999999   min: 5.381103306498916e-16   max: 0.03348991069108004
+max|colsum|: 0.015625   max|rowsum|: 305356734973777.06
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.002143416644392527  rel=1.040647412123268e-15
+A/B        : nA=1 (idx 43)   nB=1 (idx 127)   overlap=0
+MFPTs      : A->B=6.946119248289389e-09   B->A=3.5279006761943533e-09
+Vars       : Var_AB=9.84868951202744e-17   Var_BA=2.592507248041726e-17
+
+================================================================================
+ggvvia_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ggvvia_nocap/ggvvia_99idps_nocap/markov_T300K
+status    : OK
+N         : 22745   nnz(Q): 104989   nnz/state: 4.615915585843043
+pi sum    : 1.0   min: 8.221244668085885e-20   max: 0.014147894973954227
+max|colsum|: 0.016849517822265625   max|rowsum|: 120176079210245.48
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0018077896419686852  rel=1.1728980392543219e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=3.2632522715712745e-07   B->A=1.908859600802871e-06
+Vars       : Var_AB=3.518140897449364e-11   Var_BA=2.184427260824171e-10
+
+================================================================================
+gyviik_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/gyviik_nocap/gyviik_99idps_nocap/markov_T300K
+status    : OK
+N         : 41387   nnz(Q): 144819   nnz/state: 3.4991422427332255
+pi sum    : 1.0   min: 7.110880432204933e-24   max: 0.0189766305593162
+max|colsum|: 0.015625   max|rowsum|: 125429744303509.05
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0010720243697975313  rel=1.2399705932117979e-15
+A/B        : nA=1 (idx 158)   nB=1 (idx 159)   overlap=0
+MFPTs      : A->B=8.433359147543619e-07   B->A=7.25021942823579e-07
+Vars       : Var_AB=3.3305636211908886e-06   Var_BA=1.240888897154155e-05
+
+================================================================================
+keggek_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_19sb_nocap/markov_T300K
+status    : OK
+N         : 31266   nnz(Q): 105854   nnz/state: 3.3855945755773043
+pi sum    : 1.0000000000000002   min: 4.817958440026931e-19   max: 0.02705096049871041
+max|colsum|: 0.03125   max|rowsum|: 271828113488129.06
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0009361812885562773  rel=1.3467787815558134e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=6.1228071239829425e-06   B->A=9.780696683967901e-07
+Vars       : Var_AB=1.0717015013017165e-08   Var_BA=7.205614375859255e-08
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/keggek_nocap/keggek_99idps_nocap/markov_T300K
+status    : OK
+N         : 69169   nnz(Q): 269261   nnz/state: 3.8927987971490117
+pi sum    : 0.9999999999999999   min: 3.602471176290928e-24   max: 0.052695845263182335
+max|colsum|: 0.0537109375   max|rowsum|: 391945246761334.56
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0018858323902044578  rel=1.360727995207935e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=8.533279885573063e-07   B->A=1.7516681940995368e-07
+Vars       : Var_AB=2.4374210482025435e-09   Var_BA=5.179635157857462e-10
+
+================================================================================
+kkkkkk_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kkkkkk_nocap/kkkkkk_99idps_nocap/markov_T300K
+status    : OK
+N         : 58906   nnz(Q): 191468   nnz/state: 3.250398940685159
+pi sum    : 1.0   min: 1.3352883321206458e-25   max: 0.06474667312545189
+max|colsum|: 0.028076171875   max|rowsum|: 207829410429084.1
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.00043671761901856426  rel=1.2871221212854996e-15
+A/B        : nA=1 (idx 723)   nB=1 (idx 709)   overlap=0
+MFPTs      : A->B=3.863138582730008e-05   B->A=4.7178452620563996e-05
+Vars       : Var_AB=0.00021724587641319023   Var_BA=0.0005462224248160257
+
+================================================================================
+klvffa_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/klvffa_nocap/klvffa_99idps_nocap/markov_T300K
+status    : OK
+N         : 42286   nnz(Q): 173670   nnz/state: 4.107033060587429
+pi sum    : 1.0   min: 2.2788287758612628e-24   max: 0.07108042775628315
+max|colsum|: 0.03463028632655285   max|rowsum|: 392534839427166.1
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0010790212573757456  rel=1.132706198830929e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=7.147752145167136e-07   B->A=6.063659534830653e-07
+Vars       : Var_AB=1.7795438190079292e-07   Var_BA=3.273990932019242e-07
+
+================================================================================
+kyggyk_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_19sb_nocap/markov_T300K
+status    : OK
+N         : 59395   nnz(Q): 202655   nnz/state: 3.411987541038808
+pi sum    : 1.0   min: 2.9240492223487016e-111   max: 0.00627494598491583
+max|colsum|: 0.091796875   max|rowsum|: 589049821303055.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0017913871431973875  rel=1.1721376206071125e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1528)   overlap=0
+MFPTs      : A->B=2.946373666841348e-09   B->A=4.207770576314972e-09
+Vars       : Var_AB=2.2967090984822677e-11   Var_BA=2.958518855147954e-11
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/kyggyk_nocap/kyggyk_99idps_nocap/markov_T300K
+status    : OK
+N         : 79348   nnz(Q): 279092   nnz/state: 3.517316126430408
+pi sum    : 1.0   min: 2.6712305263156477e-30   max: 0.012305223369077838
+max|colsum|: 0.517578125   max|rowsum|: 1.4052373268767916e+16
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0008642435834947172  rel=1.1346647842399123e-15
+A/B        : nA=1 (idx 374)   nB=1 (idx 0)   overlap=0
+MFPTs      : A->B=2.4760874788364028e-05   B->A=6.504256551231122e-06
+Vars       : Var_AB=2.2183680685435555e-06   Var_BA=3.4619824294706083e-06
+
+================================================================================
+lfggfl_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_19sb_nocap/markov_T300K
+status    : OK
+N         : 25798   nnz(Q): 103452   nnz/state: 4.01007830064346
+pi sum    : 1.0   min: 1.2113339243063318e-92   max: 0.027856774506656617
+max|colsum|: 0.0201416015625   max|rowsum|: 139549035334870.27
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0024927398290982305  rel=1.2556915271900288e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=8.07897119814786e-08   B->A=1.7255221417881305e-07
+Vars       : Var_AB=7.237399547970626e-11   Var_BA=4.036290656862043e-11
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/lfggfl_nocap/lfggfl_99idps_nocap/markov_T300K
+status    : OK
+N         : 31718   nnz(Q): 132374   nnz/state: 4.173466170628665
+pi sum    : 1.0000000000000002   min: 6.960170726655946e-21   max: 0.053379588239879476
+max|colsum|: 0.07373046875   max|rowsum|: 597946430700978.4
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0018004217731409202  rel=1.1916176185307516e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 100)   overlap=0
+MFPTs      : A->B=2.090670407223057e-08   B->A=6.574824452552464e-08
+Vars       : Var_AB=1.0214838040566237e-11   Var_BA=6.245664856398768e-11
+
+================================================================================
+llggll_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_19sb_nocap/markov_T300K
+status    : OK
+N         : 30360   nnz(Q): 122786   nnz/state: 4.04433465085639
+pi sum    : 1.0   min: 2.6339737171892584e-109   max: 0.06948638320735162
+max|colsum|: 0.012922286987304688   max|rowsum|: 122607092743988.4
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0015056149280444943  rel=9.78096119470386e-16
+A/B        : nA=1 (idx 0)   nB=1 (idx 822)   overlap=0
+MFPTs      : A->B=5.605962718366237e-07   B->A=9.698804741437874e-07
+Vars       : Var_AB=4.082497848016944e-11   Var_BA=1.6201040488832962e-10
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/llggll_nocap/llggll_99idps_nocap/markov_T300K
+status    : OK
+N         : 48020   nnz(Q): 200666   nnz/state: 4.178800499791754
+pi sum    : 0.9999999999999999   min: 3.2073109918323887e-109   max: 0.18253279327533167
+max|colsum|: 0.01953125   max|rowsum|: 285031854518207.8
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.001950789626792141  rel=1.4012429427239798e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=5.599797871673823e-08   B->A=2.0867047023299157e-07
+Vars       : Var_AB=6.157936223872757e-11   Var_BA=2.521390964012314e-10
+
+================================================================================
+mvggvv_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/mvggvv_nocap/mvggvv_99idps_nocap/markov_T300K
+status    : OK
+N         : 23953   nnz(Q): 102675   nnz/state: 4.286519433891371
+pi sum    : 1.0   min: 4.7361362035062997e-20   max: 0.06747315069929091
+max|colsum|: 0.5898633003234863   max|rowsum|: 1721183253805318.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0015423801383439351  rel=1.1642894168392238e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=6.461368766099083e-08   B->A=6.100649021341785e-07
+Vars       : Var_AB=7.765028990569553e-13   Var_BA=8.046828044652672e-12
+
+================================================================================
+nfgail_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/nfgail_nocap/nfgail_99idps_nocap/markov_T300K
+status    : OK
+N         : 30309   nnz(Q): 117077   nnz/state: 3.8627800323336303
+pi sum    : 1.0   min: 4.992852414350317e-116   max: 0.1496177445267424
+max|colsum|: 0.044921875   max|rowsum|: 279837242659117.38
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0017443589147967931  rel=1.2744267180241615e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=5.514484568837816e-09   B->A=1.6741006533014632e-09
+Vars       : Var_AB=6.389201126497884e-12   Var_BA=1.9117536937636744e-12
+
+================================================================================
+regger_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_19sb_nocap/markov_T300K
+status    : OK
+N         : 70183   nnz(Q): 230765   nnz/state: 3.288046962939743
+pi sum    : 1.0   min: 2.1569190837644474e-23   max: 0.04095136949633578
+max|colsum|: 0.25   max|rowsum|: 1714207141073440.2
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0016787122696830287  rel=1.2655643271188161e-15
+A/B        : nA=1 (idx 98)   nB=1 (idx 354)   overlap=0
+MFPTs      : A->B=2.1692814464742485e-08   B->A=1.3905513049529324e-07
+Vars       : Var_AB=6.718289603883299e-08   Var_BA=5.961271949825589e-07
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/regger_nocap/regger_99idps_nocap/markov_T300K
+status    : OK
+N         : 41842   nnz(Q): 170726   nnz/state: 4.0802542899478995
+pi sum    : 1.0   min: 1.0234478877631228e-23   max: 0.047643698131122354
+max|colsum|: 0.0625   max|rowsum|: 515402955768810.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.002122066817859865  rel=1.2201354575418043e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=1.6008477383352425e-09   B->A=1.2494650276452368e-08
+Vars       : Var_AB=2.6811180553066624e-12   Var_BA=3.55275944854313e-11
+
+================================================================================
+rrrrrr_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/rrrrrr_nocap/rrrrrr_99idps_nocap/markov_T300K
+status    : OK
+N         : 32038   nnz(Q): 108468   nnz/state: 3.385604594543979
+pi sum    : 1.0   min: 4.5999993543224795e-24   max: 0.062003113138038246
+max|colsum|: 0.03125   max|rowsum|: 420800132068364.06
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0017984243949291938  rel=1.083456196141234e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=1.398682231033159e-10   B->A=5.076128477131239e-10
+Vars       : Var_AB=5.0167522768433495e-12   Var_BA=2.182163654219668e-11
+
+================================================================================
+ryggyr_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_19sb_nocap/markov_T300K
+status    : OK
+N         : 39836   nnz(Q): 150146   nnz/state: 3.76910332362687
+pi sum    : 1.0   min: 2.707185076712913e-63   max: 0.012203275985151509
+max|colsum|: 0.0354156494140625   max|rowsum|: 1415173853060634.8
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0021764952840263403  rel=1.1988170268831989e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=1.3631104120360617e-08   B->A=3.6299184648534247e-09
+Vars       : Var_AB=1.616941571988251e-11   Var_BA=1.9809358199161392e-11
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ryggyr_nocap/ryggyr_99idps_nocap/markov_T300K
+status    : OK
+N         : 77429   nnz(Q): 282745   nnz/state: 3.6516679796975295
+pi sum    : 1.0   min: 3.299499909313822e-22   max: 0.012785579127657667
+max|colsum|: 0.12500762939453125   max|rowsum|: 1334655887889548.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0015002475560450706  rel=1.0679753113785065e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=2.8337309176506025e-06   B->A=6.0655361508930085e-05
+Vars       : Var_AB=2.4925833915071996e-06   Var_BA=0.00012963625757093992
+
+================================================================================
+snqnnf_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/snqnnf_nocap/snqnnf_99idps_nocap/markov_T300K
+status    : OK
+N         : 119078   nnz(Q): 400904   nnz/state: 3.3667344093787266
+pi sum    : 1.0   min: 1.0192955932635503e-24   max: 0.012346821279169858
+max|colsum|: 0.9226760864257812   max|rowsum|: 5503197997938439.0
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0018425926087823402  rel=1.1137296019243366e-15
+A/B        : nA=1 (idx 464)   nB=1 (idx 759)   overlap=0
+MFPTs      : A->B=3.6504612949917916e-07   B->A=3.0863203860980164e-08
+Vars       : Var_AB=0.00032587448477663537   Var_BA=0.00023645394872697377
+
+================================================================================
+ssqvtq_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ssqvtq_nocap/ssqvtq_99idps_nocap/markov_T300K
+status    : OK
+N         : 50477   nnz(Q): 187531   nnz/state: 3.715177209422113
+pi sum    : 1.0000000000000002   min: 3.746279407340469e-24   max: 0.07239040889081144
+max|colsum|: 0.06591796875   max|rowsum|: 444324092534549.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0017038383906405202  rel=9.745604510512987e-16
+A/B        : nA=1 (idx 855)   nB=1 (idx 152)   overlap=0
+MFPTs      : A->B=5.2911109384536675e-05   B->A=5.1795022959175574e-06
+Vars       : Var_AB=0.0003439571886825088   Var_BA=0.0002762292679879371
+
+================================================================================
+sstnvg_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/sstnvg_nocap/sstnvg_99idps_nocap/markov_T300K
+status    : OK
+N         : 50096   nnz(Q): 209200   nnz/state: 4.175982114340466
+pi sum    : 0.9999999999999999   min: 1.5367797681903637e-22   max: 0.020683918884217382
+max|colsum|: 0.03466796875   max|rowsum|: 347441641489501.4
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.002958149418902486  rel=1.4244382224798322e-15
+A/B        : nA=1 (idx 149)   nB=1 (idx 150)   overlap=0
+MFPTs      : A->B=1.3640682601690661e-09   B->A=2.443333275110721e-08
+Vars       : Var_AB=1.0053492109866228e-10   Var_BA=1.884915897009579e-09
+
+================================================================================
+svsssy_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/svsssy_nocap/svsssy_99idps_nocap/markov_T300K
+status    : OK
+N         : 42117   nnz(Q): 147037   nnz/state: 3.491155590379182
+pi sum    : 1.0   min: 3.0977628343448587e-22   max: 0.022435625949665056
+max|colsum|: 0.125   max|rowsum|: 1861760157778556.0
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.003196898212072156  rel=1.2849392372010372e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1046)   overlap=0
+MFPTs      : A->B=4.808292718842873e-08   B->A=8.672759793624401e-08
+Vars       : Var_AB=3.0784455737690107e-07   Var_BA=2.2420711419119884e-06
+
+================================================================================
+vqivyk_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vqivyk_nocap/vqivyk_99idps_nocap/markov_T300K
+status    : OK
+N         : 50219   nnz(Q): 180297   nnz/state: 3.5902148589179395
+pi sum    : 0.9999999999999999   min: 7.000753504759476e-26   max: 0.018331022413532887
+max|colsum|: 0.0096435546875   max|rowsum|: 159569162336503.3
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.000899454944200832  rel=1.3046652372090356e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=3.607493967767355e-07   B->A=1.2034858016762555e-06
+Vars       : Var_AB=0.00012848701578452673   Var_BA=0.0003415221765836213
+
+================================================================================
+vvvvvv_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/vvvvvv_nocap/vvvvvv_99idps_nocap/markov_T300K
+status    : OK
+N         : 34569   nnz(Q): 153209   nnz/state: 4.431976626457231
+pi sum    : 1.0   min: 2.873113459449179e-21   max: 0.011095267613018418
+max|colsum|: 0.009103140328079462   max|rowsum|: 118202479696386.03
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0014559032211359508  rel=1.1480444930853602e-15
+A/B        : nA=1 (idx 99)   nB=1 (idx 100)   overlap=0
+MFPTs      : A->B=1.49416880151551e-08   B->A=2.2173079232353216e-08
+Vars       : Var_AB=1.2865415481586683e-09   Var_BA=2.3367177394892263e-09
+
+================================================================================
+ykggky_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_19sb_nocap/markov_T300K
+status    : OK
+N         : 49754   nnz(Q): 198394   nnz/state: 3.987498492583511
+pi sum    : 1.0000000000000002   min: 1.6023781384725522e-63   max: 0.09911878618643845
+max|colsum|: 0.125   max|rowsum|: 1315578084736770.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0010738571671368613  rel=1.3191211085858594e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=   B->A=
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/ykggky_nocap/ykggky_99idps_nocap/markov_T300K
+status    : OK
+N         : 75766   nnz(Q): 261348   nnz/state: 3.4494100256051525
+pi sum    : 1.0   min: 4.7859673815757557e-23   max: 0.03573385565935743
+max|colsum|: 0.0546875   max|rowsum|: 1076977349144427.8
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0015766727816295064  rel=1.5834159528335104e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=   B->A=
+
+================================================================================
+yrggry_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_19sb_nocap/markov_T300K
+status    : OK
+N         : 26519   nnz(Q): 87287   nnz/state: 3.2914891210075794
+pi sum    : 1.0   min: 2.191146341070428e-62   max: 0.021800263711059087
+max|colsum|: 0.129638671875   max|rowsum|: 3918216139213802.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0012259384465632852  rel=1.1480770234082476e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=   B->A=
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yrggry_nocap/yrggry_99idps_nocap/markov_T300K
+status    : OK
+N         : 80266   nnz(Q): 289168   nnz/state: 3.6026212842299357
+pi sum    : 1.0   min: 2.3603768452455723e-69   max: 0.01068144798936462
+max|colsum|: 0.06005859375   max|rowsum|: 857485382220151.4
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.001569685184095825  rel=1.1789230061478292e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1)   overlap=0
+MFPTs      : A->B=   B->A=
+
+================================================================================
+yyggyy_nocap  |  T300K
+================================================================================
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_19sb_nocap/markov_T300K
+status    : OK
+N         : 32173   nnz(Q): 120291   nnz/state: 3.7388804276878127
+pi sum    : 1.0   min: 4.8701206396138536e-20   max: 0.02760308926024747
+max|colsum|: 0.0625   max|rowsum|: 722790262847153.0
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.002411231324304514  rel=1.1533074382127714e-15
+A/B        : nA=1 (idx 0)   nB=1 (idx 1301)   overlap=0
+MFPTs      : A->B=   B->A=
+
+markov_dir: /scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped/yyggyy_nocap/yyggyy_99idps_nocap/markov_T300K
+status    : OK
+N         : 56303   nnz(Q): 205505   nnz/state: 3.649983127009218
+pi sum    : 0.9999999999999999   min: 1.4353203279061135e-24   max: 0.03428245727770476
+max|colsum|: 0.082275390625   max|rowsum|: 2421743248043053.5
+sign checks: off_neg=0  diag_pos=0
+stationary : ||Qpi||1=0.0010015480821297653  rel=1.2811882689991644e-15
+A/B        : nA=1 (idx 406)   nB=1 (idx 2020)   overlap=0
+MFPTs      : A->B=   B->A=
+
