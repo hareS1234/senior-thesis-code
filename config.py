@@ -71,6 +71,14 @@ class MarkovFilePaths:
         return self.markov_dir / f"original_min_ids_{self.temp_tag}.npy"
 
     @property
+    def pygt_dir(self) -> Path:
+        return self.markov_dir
+
+    @property
+    def barrier_matrix_path(self) -> Path:
+        return self.markov_dir / f"barrier_matrix_{self.temp_tag}.npz"
+
+    @property
     def summary_json_path(self) -> Path:
         return self.markov_dir / f"summary_{self.temp_tag}.json"
 
