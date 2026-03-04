@@ -90,18 +90,26 @@ def load_markov(
         pi_path = markov_dir / f"pi_{tag}.npy"
 
     B = _load_sparse(B_path)
-    K = _load_sparse(K_path)
+    tau = np.load(tau_path)
+    pi = np.load(pi_path)
+
+    if K_path.exists():
+        K = _load_sparse(K_path)
+    elif Q_path.exists():
+        # Reconstruct K from Q: K_ij = Q_ij for i!=j, K_ii = 0
+        Q_tmp = _load_sparse(Q_path)
+        K = Q_tmp.copy()
+        K.setdiag(0)
+        K.eliminate_zeros()
+    else:
+        raise FileNotFoundError(f"Neither K nor Q found in {K_path.parent}")
 
     if Q_path.exists():
         Q = _load_sparse(Q_path)
     else:
         # Reconstruct generator: Q = K - diag(1/tau)
-        tau = np.load(tau_path)
         escape = 1.0 / tau
         Q = (K - sp.diags(escape, offsets=0, format="csr")).tocsr()
-
-    tau = np.load(tau_path)
-    pi = np.load(pi_path)
 
     return B, K, Q, tau, pi
 
