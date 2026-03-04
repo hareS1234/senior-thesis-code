@@ -157,8 +157,19 @@ def load_AB_selectors(
 
     # Map to coarse indices
     eff_dir = coarse_dir_for_T(markov_dir, T)
+
+    # Prefer direct A/B state files saved by build_gt_kept_models.py
+    A_direct = eff_dir / f"A_states_{tag}.npy"
+    B_direct = eff_dir / f"B_states_{tag}.npy"
+    if A_direct.exists() and B_direct.exists():
+        return np.load(A_direct), np.load(B_direct)
+
+    # Fallback: reconstruct from original min IDs mapping
     orig_micro_ids_path = markov_dir / f"original_min_ids_{tag}.npy"
-    orig_eff_ids_path = eff_dir / f"orig_min_ids_eff_{tag}.npy"
+    # build_gt_kept_models.py saves as "original_min_ids_eff_", not "orig_"
+    orig_eff_ids_path = eff_dir / f"original_min_ids_eff_{tag}.npy"
+    if not orig_eff_ids_path.exists():
+        orig_eff_ids_path = eff_dir / f"orig_min_ids_eff_{tag}.npy"
 
     if not (orig_micro_ids_path.exists() and orig_eff_ids_path.exists()):
         return None, None
