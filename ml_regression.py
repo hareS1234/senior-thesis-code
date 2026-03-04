@@ -26,7 +26,9 @@ from pandas.api.types import is_numeric_dtype
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.linear_model import (
+    LinearRegression, Ridge, Lasso, ElasticNet, RidgeCV, LassoCV, ElasticNetCV,
+)
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneOut
@@ -169,8 +171,14 @@ MODELS = {
     "OLS": (LinearRegression, {}),
     "Ridge_1": (Ridge, {"alpha": 1.0}),
     "Ridge_10": (Ridge, {"alpha": 10.0}),
+    "RidgeCV": (RidgeCV, {"alphas": np.logspace(-3, 3, 20)}),
     "Lasso_01": (Lasso, {"alpha": 0.1, "max_iter": 10000}),
     "Lasso_1": (Lasso, {"alpha": 1.0, "max_iter": 10000}),
+    "LassoCV": (LassoCV, {"max_iter": 10000, "cv": 5}),
+    "ElasticNet": (ElasticNet, {"alpha": 0.5, "l1_ratio": 0.5, "max_iter": 10000}),
+    "ElasticNetCV": (ElasticNetCV, {
+        "l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9], "max_iter": 10000, "cv": 5,
+    }),
     "RandomForest": (RandomForestRegressor, {
         "n_estimators": 100, "max_depth": 5, "random_state": 42,
     }),

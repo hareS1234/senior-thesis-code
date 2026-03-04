@@ -66,10 +66,14 @@ class MPBackbone(nn.Module):
 
         for _ in range(n_layers):
             if conv_type == "nnconv":
+                # Bottleneck edge network to avoid parameter explosion.
+                # Without bottleneck: final layer has hidden_dim * hidden_dim^2
+                # params (~262K for hidden_dim=64).  With bottleneck: ~66K.
+                bottleneck = max(hidden_dim // 4, 8)
                 edge_nn = nn.Sequential(
-                    nn.Linear(edge_dim, hidden_dim),
+                    nn.Linear(edge_dim, bottleneck),
                     nn.ReLU(),
-                    nn.Linear(hidden_dim, hidden_dim * hidden_dim),
+                    nn.Linear(bottleneck, hidden_dim * hidden_dim),
                 )
                 self.convs.append(NNConv(hidden_dim, hidden_dim, edge_nn,
                                          aggr="mean"))
@@ -128,7 +132,7 @@ class KTNNodeModel(nn.Module):
     def __init__(
         self,
         node_dim: int = 6,
-        edge_dim: int = 3,
+        edge_dim: int = 4,
         hidden_dim: int = 64,
         n_layers: int = 3,
         conv_type: str = "nnconv",
@@ -169,7 +173,7 @@ class KTNGraphModel(nn.Module):
     def __init__(
         self,
         node_dim: int = 6,
-        edge_dim: int = 3,
+        edge_dim: int = 4,
         hidden_dim: int = 64,
         n_layers: int = 3,
         conv_type: str = "nnconv",
@@ -218,7 +222,7 @@ class KTNMultiTaskModel(nn.Module):
     def __init__(
         self,
         node_dim: int = 6,
-        edge_dim: int = 3,
+        edge_dim: int = 4,
         hidden_dim: int = 64,
         n_layers: int = 3,
         conv_type: str = "nnconv",
