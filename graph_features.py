@@ -34,16 +34,63 @@ from io_markov import load_markov, load_AB_selectors, temp_tag
 # ======================================================================
 
 def _branching_length_matrix(B: csr_matrix) -> csr_matrix:
-    """Build sparse distance matrix L where L[i,j] = -log(B_{i,j}).
+    """Build a sparse *adjacency/length* matrix for Dijkstra on the branching graph.
 
-    B is the branching probability matrix with B_ij in (0,1],
-    so -log(B_ij) >= 0 — safe for Dijkstra's algorithm.
+    Conventions
+    ----------
+    The branching matrix uses the same convention as the rates:
+        B[i, j] = P(jump to i | leaving j) = B_{i <- j}
+
+    SciPy's `shortest_path` expects an adjacency matrix A where A[src, dst] is
+    the edge weight from `src` to `dst`. Therefore we must *transpose* the
+    (i <- j) storage convention:
+
+        L[src=j, dst=i] = -log(B[i, j])
+
+    This yields non-negative edge weights suitable for Dijkstra's algorithm.
     """
     B_coo = B.tocoo()
     mask = B_coo.data > 0
-    rows, cols = B_coo.row[mask], B_coo.col[mask]
+    # Stored as (dst=i, src=j) -> convert to adjacency (src=j, dst=i)
+    src = B_coo.col[mask]
+    dst = B_coo.row[mask]
     data = -np.log(np.clip(B_coo.data[mask], 1e-300, None))
-    return coo_matrix((data, (rows, cols)), shape=B.shape).tocsr()
+    return coo_matrix((data, (src, dst)), shape=B.shape).tocsr()
+
+
+def _rate_length_matrix(K: csr_matrix, min_rate: float = 1e-300) -> csr_matrix:
+    """Build a sparse *adjacency/length* matrix for shortest paths on the rate graph.
+
+    Conventions
+    ----------
+    K[i, j] = k_{i <- j} is the rate *into i from j* (so columns are sources).
+
+    For a directed edge j -> i, we want the adjacency entry:
+        L[src=j, dst=i] = -log(k_{i <- j}) = -log(K[i, j])
+
+    Non-negativity
+    --------------
+    Dijkstra's algorithm (used internally by SciPy when possible) requires
+    non-negative edge weights. In principle, rates can exceed 1 in the chosen
+    units, which would make -log(k) negative and can create negative cycles.
+
+    To make this descriptor robust, we *shift* the edge lengths so that the
+    minimum edge length is 0 whenever needed. This is equivalent to normalizing
+    rates by the maximum observed rate in the graph, and leaves the ordering of
+    edges by "fastness" intact.
+    """
+    K_coo = K.tocoo()
+    mask = (K_coo.row != K_coo.col) & (K_coo.data > min_rate)
+    # Stored as (dst=i, src=j) -> adjacency (src=j, dst=i)
+    src = K_coo.col[mask]
+    dst = K_coo.row[mask]
+    data = -np.log(np.clip(K_coo.data[mask], min_rate, None))
+
+    # Shift to non-negative if needed (safety guard)
+    if data.size and np.min(data) < 0:
+        data = data - np.min(data)
+
+    return coo_matrix((data, (src, dst)), shape=K.shape).tocsr()
 
 
 def compute_distance_features(
@@ -88,7 +135,16 @@ def compute_distance_features(
 
     # --- Barrier-based distances (undirected) ---
     if barrier_mat is not None:
-        bdist = shortest_path(barrier_mat, directed=False, indices=A_idx)
+        # Barrier matrices are conceptually undirected; enforce symmetry to avoid
+        # indexing/orientation issues if the file stores only one triangle.
+        barrier = barrier_mat.tocsr()
+        barrier = 0.5 * (barrier + barrier.T)
+        barrier.setdiag(0)
+        barrier.eliminate_zeros()
+        if barrier.nnz:
+            barrier.data = np.clip(barrier.data, 0.0, None)
+
+        bdist = shortest_path(barrier, directed=False, indices=A_idx)
         bab = bdist[:, B_idx_dist]
         finite_bab = bab[np.isfinite(bab)]
         feats["barrier_dist_AB_min"] = float(np.min(finite_bab)) if finite_bab.size else np.nan
@@ -316,6 +372,8 @@ def compute_community_features(
     # Build symmetrized affinity matrix from rates
     K_sym = 0.5 * (K + K.T)
     K_sym.data = np.abs(K_sym.data)  # ensure non-negative
+    deg = np.asarray(K_sym.sum(axis=1)).ravel()
+    deg[deg == 0] = 1.0
 
     # Determine number of clusters from eigengap heuristic
     n_try = min(max_clusters + 1, N - 1, 15)
@@ -329,8 +387,6 @@ def compute_community_features(
 
     try:
         # Graph Laplacian eigenvalues for eigengap
-        deg = np.asarray(K_sym.sum(axis=1)).ravel()
-        deg[deg == 0] = 1.0
         D_inv_sqrt = diags(1.0 / np.sqrt(deg))
         L_norm = diags(np.ones(N)) - D_inv_sqrt @ K_sym @ D_inv_sqrt
 
@@ -389,9 +445,11 @@ def compute_community_features(
     if m > 0:
         Q_mod = 0.0
         for c in range(n_actual):
-            mask_c = (labels == c)
-            internal = K_sym[np.ix_(mask_c, mask_c)].sum() / 2.0
-            degree_c = deg[mask_c].sum()
+            idx_c = np.where(labels == c)[0]
+            if idx_c.size == 0:
+                continue
+            internal = K_sym[idx_c][:, idx_c].sum() / 2.0
+            degree_c = deg[idx_c].sum()
             Q_mod += internal / m - (degree_c / (2.0 * m)) ** 2
         feats["modularity"] = float(Q_mod)
     else:
@@ -593,7 +651,10 @@ def extract_features_one(
     try:
         if mp.barrier_matrix_path.exists():
             from scipy.sparse import load_npz
-            barrier_mat = load_npz(mp.barrier_matrix_path)
+            barrier_candidate = load_npz(mp.barrier_matrix_path)
+            # Barrier matrix is often microscopic; use only when aligned to coarse indexing.
+            if barrier_candidate.shape == B.shape:
+                barrier_mat = barrier_candidate
     except Exception:
         pass
 
