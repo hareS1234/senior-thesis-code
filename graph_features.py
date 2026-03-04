@@ -630,6 +630,8 @@ def main():
             row = extract_features_one(dps_dir, args.T)
         except Exception as e:
             row = {"dps_dir": str(dps_dir), "status": f"ERROR: {e}"}
+        if row.get("status") != "OK":
+            print(f"    -> {row.get('status', 'UNKNOWN')}")
         rows.append(row)
 
     df = pd.DataFrame(rows)
