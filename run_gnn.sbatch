@@ -5,6 +5,9 @@
 #SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
+#SBATCH --partition=gpu
+#SBATCH --qos=gpu-short
+#SBATCH --gres=gpu:1
 
 # ---------- environment ----------
 module purge
