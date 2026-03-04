@@ -83,9 +83,20 @@ class MarkovFilePaths:
         return self.markov_dir / f"summary_{self.temp_tag}.json"
 
 
-def iter_dps_dirs() -> list[Path]:
+def iter_dps_dirs(base_dir: Path | None = None) -> list[Path]:
+    """Return sorted DPS directories under `base_dir` (defaults to `BASE_DIR`).
+
+    Directory structure expected:
+        base_dir/
+            <sequence>_nocap/
+                <dps>_nocap/
+                    min.data
+                    ts.data
+    """
+    root = base_dir if base_dir is not None else BASE_DIR
+
     dps_dirs: list[Path] = []
-    for seq_dir in BASE_DIR.glob(SEQUENCE_GLOB):
+    for seq_dir in root.glob(SEQUENCE_GLOB):
         if not seq_dir.is_dir():
             continue
         for dps_dir in seq_dir.glob(DPS_GLOB):

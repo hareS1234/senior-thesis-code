@@ -49,42 +49,59 @@ def compute_committor(
     B_sel: np.ndarray,
 ) -> Optional[np.ndarray]:
     """
-    Compute the forward committor q_i^+ for each node.
+    Compute the *forward committor* q_i^+ for each node:
 
-    q_i^+ = P(reach B before A | start at i).
-    Boundary: q_A = 0, q_B = 1.
-    Interior: Q_II @ q_I = -Q_IB @ 1_B
+        q_i^+ = P(reach B before A | start at i).
 
-    Returns (N,) array or None on failure.
+    With our convention, the generator `Q` acts on *probability vectors* via
+    dp/dt = Q p, so columns sum to zero.  The associated *backward*
+    (row-sum-zero) generator is G = Q^T.
+
+    Boundary conditions:
+        q_A = 0,  q_B = 1
+
+    Interior equation (backward equation):
+        G_II q_I = - G_IB 1
+
+    Returns
+    -------
+    q : (N,) ndarray in [0, 1], or None on failure.
     """
     N = Q.shape[0]
-    A_idx = np.where(A_sel)[0]
+    A_sel = np.asarray(A_sel, dtype=bool)
+    B_sel = np.asarray(B_sel, dtype=bool)
+
+    if A_sel.shape[0] != N or B_sel.shape[0] != N:
+        raise ValueError("A_sel/B_sel must be boolean arrays of length N=Q.shape[0].")
+
     B_idx = np.where(B_sel)[0]
     I_mask = ~(A_sel | B_sel)
     I_idx = np.where(I_mask)[0]
 
+    # Trivial case: no interior states.
     if I_idx.size == 0:
-        # Only A and B states, no interior
-        q = np.zeros(N)
+        q = np.zeros(N, dtype=float)
         q[B_sel] = 1.0
         return q
 
-    # Extract submatrix Q_II and Q_IB
-    Q_II = Q[np.ix_(I_idx, I_idx)]
-    Q_IB = Q[np.ix_(I_idx, B_idx)]
+    # Backward generator (row-sum-zero)
+    G = Q.T.tocsr()
 
-    # Solve Q_II @ q_I = -Q_IB @ ones
-    rhs = -Q_IB @ np.ones(B_idx.size)
+    # Sub-blocks on interior nodes
+    G_II = G[np.ix_(I_idx, I_idx)].tocsc()
+    G_IB = G[np.ix_(I_idx, B_idx)]
+
+    rhs = -G_IB @ np.ones(B_idx.size, dtype=float)
 
     try:
-        q_I = spsolve(Q_II, rhs)
+        q_I = spsolve(G_II, rhs)
     except Exception:
         return None
 
-    # Clamp to [0, 1] (numerical noise)
+    # Numerical cleanup
     q_I = np.clip(q_I, 0.0, 1.0)
 
-    q = np.zeros(N)
+    q = np.zeros(N, dtype=float)
     q[B_sel] = 1.0
     q[I_idx] = q_I
     return q
@@ -95,29 +112,40 @@ def compute_mfpt_to_B(
     B_sel: np.ndarray,
 ) -> Optional[np.ndarray]:
     """
-    Compute MFPT from each node to set B.
+    Compute the mean first-passage time (MFPT) from each node to set B.
 
-    Interior: Q_II @ m_I = -1  (with m_B = 0).
+    With the column-sum-zero convention dp/dt = Q p, the backward generator is
+    G = Q^T. The MFPT m solves, for i in I = complement(B):
 
-    Returns (N,) array or None on failure.
+        (G m)_i = -1,   with boundary m_B = 0.
+
+    Returns
+    -------
+    m : (N,) ndarray (non-negative), or None on failure.
     """
     N = Q.shape[0]
-    B_idx = np.where(B_sel)[0]
+    B_sel = np.asarray(B_sel, dtype=bool)
+    if B_sel.shape[0] != N:
+        raise ValueError("B_sel must be a boolean array of length N=Q.shape[0].")
+
     I_mask = ~B_sel
     I_idx = np.where(I_mask)[0]
 
     if I_idx.size == 0:
-        return np.zeros(N)
+        return np.zeros(N, dtype=float)
 
-    Q_II = Q[np.ix_(I_idx, I_idx)]
-    rhs = -np.ones(I_idx.size)
+    G = Q.T.tocsr()
+    G_II = G[np.ix_(I_idx, I_idx)].tocsc()
+
+    rhs = -np.ones(I_idx.size, dtype=float)
 
     try:
-        m_I = spsolve(Q_II, rhs)
+        m_I = spsolve(G_II, rhs)
     except Exception:
         return None
 
-    m = np.zeros(N)
+    m = np.zeros(N, dtype=float)
+    # Clip tiny negative values from numerical error
     m[I_idx] = np.clip(m_I, 0.0, None)
     return m
 
@@ -176,53 +204,59 @@ def build_edge_features(
     B_mat: csr_matrix,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
-    Build edge_index [2, E] and edge_attr [E, D_edge] from rate matrix.
+    Build (edge_index, edge_attr) for PyTorch Geometric.
 
-    Edge features:
-        0: log(k_ij)     -- forward rate (K[i,j] = rate j->i)
-        1: log(k_ji)     -- reverse rate
-        2: b_ij          -- branching probability
+    Conventions
+    ----------
+    K[i, j] = k_{i <- j} is the *rate into i from j* (so columns are sources).
+    Therefore each nonzero off-diagonal entry K[i, j] corresponds to a directed
+    edge (source=j) -> (target=i).
 
-    K convention: K[i,j] = rate of transition *into* i *from* j.
-    So edge (source=j, target=i) has rate K[i,j].
+    Edge features (D_edge = 3)
+    -------------------------
+        0: log(k_{i<-j})   forward log-rate
+        1: log(k_{j<-i})   reverse log-rate (0 if no reverse edge)
+        2: B_{i<-j}        branching probability for this jump
+
+    Notes
+    -----
+    We standardize the two log-rate columns *within each graph* to stabilize
+    training across networks with different absolute prefactors.
     """
     K_coo = K.tocoo()
-    # Only off-diagonal entries
-    mask = K_coo.row != K_coo.col
-    rows = K_coo.row[mask]  # target
-    cols = K_coo.col[mask]  # source
-    rates = K_coo.data[mask]
+    mask = K_coo.row != K_coo.col  # off-diagonal only
 
-    # Edge index: source -> target convention for PyG
+    rows = K_coo.row[mask].astype(np.int64)   # target i
+    cols = K_coo.col[mask].astype(np.int64)   # source j
+    rates = K_coo.data[mask].astype(float)
+
+    # PyG edge_index uses [2, E] with (source, target)
     edge_index = torch.tensor(np.vstack([cols, rows]), dtype=torch.long)
 
-    # Edge features
-    n_edges = cols.size
+    n_edges = rows.size
     edge_attr = np.zeros((n_edges, 3), dtype=np.float32)
 
-    # Forward rate: log(k_{i<-j}) = log(K[i,j])
+    # Forward log-rate: log(K[i,j])
     edge_attr[:, 0] = np.log(np.clip(rates, 1e-300, None))
 
-    # Reverse rate: log(k_{j<-i}) = log(K[j,i])
+    # Reverse log-rate: log(K[j,i]) (vectorized sparse fancy indexing)
     K_csr = K.tocsr()
-    for idx in range(n_edges):
-        rev_rate = K_csr[cols[idx], rows[idx]]
-        edge_attr[idx, 1] = np.log(max(float(rev_rate), 1e-300))
+    rev_rates = np.asarray(K_csr[cols, rows]).ravel().astype(float)
+    edge_attr[:, 1] = np.log(np.clip(rev_rates, 1e-300, None))
 
-    # Branching probability
-    B_coo = B_mat.tocoo()
-    B_dict = {}
-    for r, c, d in zip(B_coo.row, B_coo.col, B_coo.data):
-        B_dict[(r, c)] = d
-    for idx in range(n_edges):
-        edge_attr[idx, 2] = B_dict.get((rows[idx], cols[idx]), 0.0)
+    # Branching probability for the same directed edge j->i is B[i,j]
+    B_csr = B_mat.tocsr()
+    b_vals = np.asarray(B_csr[rows, cols]).ravel().astype(float)
+    edge_attr[:, 2] = b_vals.astype(np.float32)
 
-    # Standardize log-rate features
-    for col in range(2):
-        vals = edge_attr[:, col]
+    # Standardize log-rate columns (0 and 1) within this graph
+    for c in (0, 1):
+        vals = edge_attr[:, c]
         finite = vals[np.isfinite(vals)]
         if finite.size > 1 and finite.std() > 0:
-            edge_attr[:, col] = (vals - finite.mean()) / finite.std()
+            edge_attr[:, c] = (vals - finite.mean()) / finite.std()
+        else:
+            edge_attr[:, c] = 0.0
 
     return edge_index, torch.from_numpy(edge_attr)
 
@@ -281,7 +315,7 @@ class KTNDataset(InMemoryDataset):
                             targets[f"log_{col}"] = np.log10(val)
                 graph_targets[dps] = targets
 
-        dps_dirs = iter_dps_dirs()
+        dps_dirs = iter_dps_dirs(self.base_dir)
         tag = temp_tag(self.T)
         data_list = []
 
@@ -346,7 +380,7 @@ class KTNDataset(InMemoryDataset):
                 mfpt = compute_mfpt_to_B(Q, B_sel)
                 if mfpt is not None:
                     # Log-transform for numerical stability
-                    mfpt_log = np.log10(np.clip(mfpt, 1e-300, None))
+                    mfpt_log = np.log10(np.clip(mfpt, 1e-12, None))  # avoid -inf at B nodes
                     data.mfpt_to_B = torch.from_numpy(mfpt_log.astype(np.float32))
 
             # Store A/B masks for training
