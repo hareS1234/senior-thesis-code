@@ -16,17 +16,26 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # ---------- paths ----------
 CODEDIR=/scratch/gpfs/JERELLE/harry/thesis_code
 cd $CODEDIR || exit 1
-mkdir -p ml_results logs
+mkdir -p ml_results_strict ml_results_imputed logs
 
 echo "==== Job info ===="
 echo "JobID: $SLURM_JOB_ID"
 echo "Start: $(date)"
 echo "=================="
 
-# ---------- run ----------
+# ---------- run (strict mode: drop rows with NaN features) ----------
+echo "--- Strict mode ---"
 python ml_regression.py \
   --features-csv graph_features_coarse_T300K.csv \
   --targets-csv  GTcheck_micro_vs_coarse_T300K_full.csv \
-  --out-dir      ml_results
+  --out-dir      ml_results_strict
+
+# ---------- run (impute mode: median-fill NaN features) ----------
+echo "--- Impute mode ---"
+python ml_regression.py \
+  --features-csv graph_features_coarse_T300K.csv \
+  --targets-csv  GTcheck_micro_vs_coarse_T300K_full.csv \
+  --out-dir      ml_results_imputed \
+  --impute
 
 echo "End: $(date)"
