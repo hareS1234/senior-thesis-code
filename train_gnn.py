@@ -38,7 +38,7 @@ from ktn_dataset import KTNDataset
 from gnn_models import KTNNodeModel, KTNGraphModel, KTNMultiTaskModel
 
 # Graph-level target columns (indices into data.y[0])
-TARGET_NAMES = ["log_MFPT_AB", "log_MFPT_BA", "log_t1", "t1_over_t2"]
+TARGET_NAMES = ["log_MFPT_coarse_AB", "log_MFPT_coarse_BA", "log_t1", "t1_over_t2"]
 
 
 # ======================================================================
@@ -86,8 +86,8 @@ def train_node_level(
 
     # Build train/val masks for each graph
     data_list = []
-    for data in dataset:
-        target_attr = "committor" if task == "committor" else "mfpt_to_B"
+    target_attr = "committor" if task == "committor" else "mfpt_to_B"
+    for graph_idx, data in enumerate(dataset):
         if not hasattr(data, target_attr):
             continue
 
@@ -99,9 +99,13 @@ def train_node_level(
         interior = ~(data.A_mask | data.B_mask)
         interior_idx = torch.where(interior)[0].numpy()
 
-        rng = np.random.default_rng(seed)
+        rng = np.random.default_rng(seed + 1009 * graph_idx)
         rng.shuffle(interior_idx)
-        split = int(len(interior_idx) * train_frac)
+        if len(interior_idx) <= 1:
+            split = len(interior_idx)
+        else:
+            split = int(len(interior_idx) * train_frac)
+            split = min(max(split, 1), len(interior_idx) - 1)
 
         train_mask = torch.zeros(N, dtype=torch.bool)
         val_mask = torch.zeros(N, dtype=torch.bool)
@@ -121,6 +125,11 @@ def train_node_level(
         print("[train_gnn] No graphs with valid node targets.")
         return {}
 
+    n_val_total = int(sum(int(d.val_mask.sum().item()) for d in data_list))
+    if n_val_total == 0:
+        print("[train_gnn] No validation nodes available after splitting. Skipping.")
+        return {}
+
     loader = DataLoader(data_list, batch_size=4, shuffle=True)
 
     # Loss function
@@ -130,6 +139,7 @@ def train_node_level(
         loss_fn = nn.MSELoss(reduction="none")
 
     best_val_loss = float("inf")
+    best_state = copy.deepcopy(model.state_dict())
     history = {"train_loss": [], "val_loss": []}
 
     for epoch in range(n_epochs):
@@ -186,15 +196,20 @@ def train_node_level(
     model.load_state_dict(best_state)
     model.eval()
 
-    all_pred, all_true, all_val = [], [], []
+    all_pred, all_true = [], []
     with torch.no_grad():
         for batch in DataLoader(data_list, batch_size=1):
             batch = batch.to(device)
             pred = model(batch).cpu().numpy()
             target = batch.node_target.cpu().numpy()
             val_mask = batch.val_mask.cpu().numpy()
-            all_pred.append(pred[val_mask])
-            all_true.append(target[val_mask])
+            if np.any(val_mask):
+                all_pred.append(pred[val_mask])
+                all_true.append(target[val_mask])
+
+    if not all_pred:
+        print("[train_gnn] Validation split produced no evaluable nodes. Skipping.")
+        return {}
 
     all_pred = np.concatenate(all_pred)
     all_true = np.concatenate(all_true)
@@ -292,7 +307,6 @@ def train_graph_level_loocv(
         test_data = valid_data[fold_idx]
         seq_name = getattr(test_data, "sequence", f"graph_{fold_idx}")
 
-        fold_preds = []
         for seed in range(n_seeds):
             torch.manual_seed(seed * 1000 + fold_idx)
 
@@ -321,7 +335,7 @@ def train_graph_level_loocv(
             val_loader = DataLoader(val_subset, batch_size=len(val_subset))
 
             best_val = float("inf")
-            best_state = None
+            best_state = copy.deepcopy(model.state_dict())
             wait = 0
 
             for epoch in range(n_epochs):
@@ -337,6 +351,7 @@ def train_graph_level_loocv(
 
                 # Validation
                 model.eval()
+                val_loss = float("inf")
                 with torch.no_grad():
                     for batch in val_loader:
                         batch = batch.to(device)

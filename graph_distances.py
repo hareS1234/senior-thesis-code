@@ -102,16 +102,21 @@ def rate_based_lengths(
     K = load_sparse(markov_paths.K_path)
     N = K.shape[0]
 
-    # Build a sparse "length" matrix L where L_ij = -log(k_ij) for i!=j
+    # Build sparse adjacency lengths in (src, dst) orientation.
+    # K[dst, src] = k_{dst <- src} so each nonzero K[i, j] is edge j -> i.
     K_coo = K.tocoo()
-    mask = K_coo.data > min_rate
-    rows = K_coo.row[mask]
-    cols = K_coo.col[mask]
+    mask = (K_coo.row != K_coo.col) & (K_coo.data > min_rate)
+    src = K_coo.col[mask]
+    dst = K_coo.row[mask]
     data = -np.log(K_coo.data[mask])
+
+    # Keep edge lengths non-negative for Dijkstra compatibility.
+    if data.size and np.min(data) < 0:
+        data = data - np.min(data)
 
     from scipy.sparse import coo_matrix
 
-    L = coo_matrix((data, (rows, cols)), shape=(N, N)).tocsr()
+    L = coo_matrix((data, (src, dst)), shape=(N, N)).tocsr()
 
     if sources is None:
         indices = None

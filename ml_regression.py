@@ -22,6 +22,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib
+from pandas.api.types import is_numeric_dtype
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -113,7 +114,7 @@ def get_feature_cols(df: pd.DataFrame) -> List[str]:
                    "nB_micro", "nB_coarse",
                    "relerr_AB", "relerr_BA", "log10_ratio_AB", "log10_ratio_BA"):
             continue
-        if df[col].dtype in (np.float64, np.float32, np.int64, np.int32, float, int):
+        if is_numeric_dtype(df[col]):
             # Check it's not all NaN
             if df[col].notna().sum() > df.shape[0] * 0.5:
                 candidates.append(col)
@@ -394,26 +395,30 @@ def main():
 
     feature_cols = get_feature_cols(df)
     print(f"[ml_regression] Using {len(feature_cols)} features.")
-
-    # Drop rows with any NaN in features or targets
-    targets = [t for t in TARGET_DEFS if t in df.columns]
-    subset_cols = feature_cols + targets
-    df_clean = df.dropna(subset=subset_cols).copy()
-    print(f"[ml_regression] {len(df_clean)} networks after dropping NaNs.")
-
-    if len(df_clean) < 10:
-        print("[ml_regression] Too few samples for meaningful analysis. Exiting.")
+    if not feature_cols:
+        print("[ml_regression] No usable numeric features found. Exiting.")
         return
 
-    X = df_clean[feature_cols].values.astype(float)
-    labels = df_clean["sequence"].tolist() if "sequence" in df_clean.columns else \
-             [str(i) for i in range(len(df_clean))]
+    targets = [t for t in TARGET_DEFS if t in df.columns]
+    if not targets:
+        print("[ml_regression] No target columns available after merge. Exiting.")
+        return
 
     for target in targets:
-        y = df_clean[target].values.astype(float)
+        # Keep as many samples as possible for this specific target.
+        df_target = df.dropna(subset=feature_cols + [target]).copy()
+        print(f"[ml_regression] {target}: {len(df_target)} networks after dropping NaNs.")
+        if len(df_target) < 10:
+            print(f"  [ml_regression] Skipping {target}: too few samples.")
+            continue
+
+        X = df_target[feature_cols].values.astype(float)
+        y = df_target[target].values.astype(float)
         if np.isnan(y).all():
             print(f"  [ml_regression] Skipping {target}: all NaN.")
             continue
+        labels = df_target["sequence"].tolist() if "sequence" in df_target.columns else \
+                 [str(i) for i in range(len(df_target))]
 
         print(f"\n{'='*60}")
         print(f"  Target: {target}  (N = {len(y)})")
@@ -447,7 +452,7 @@ def main():
 
         # Save predictions CSV for notebook consumption
         pred_df = pd.DataFrame({
-            "dps_dir": df_clean["dps_dir"].values,
+            "dps_dir": df_target["dps_dir"].values,
             "actual": y,
             "predicted": y_pred,
         })

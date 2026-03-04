@@ -281,8 +281,8 @@ def compute_centrality_features(
     """
     Compute centrality of A and B states in the network.
 
-    Includes PageRank, stationary probability, and eigenvector centrality.
-    Betweenness is approximate (sampled) for large networks.
+    Includes PageRank, stationary probability, eigenvector centrality,
+    and a closeness-like score on the undirected connectivity graph.
     """
     feats: Dict[str, float] = {}
     N = K.shape[0]
@@ -312,41 +312,32 @@ def compute_centrality_features(
         feats["eigvec_centrality_A"] = np.nan
         feats["eigvec_centrality_B"] = np.nan
 
-    # Approximate closeness centrality
-    # For large networks, sample a subset of source nodes
-    # Always include A/B nodes in the sample so their centrality is computed
+    # Closeness-like centrality for A/B nodes.
+    # We only need scores for A/B, so compute shortest paths from those nodes.
     A_idx = np.where(A_sel)[0]
     B_idx_cent = np.where(B_sel)[0]
-    must_include = np.union1d(A_idx, B_idx_cent)
-    n_sample = min(200, N)
-    rng = np.random.default_rng(42)
-    if must_include.size >= n_sample:
-        sample_idx = must_include[:n_sample]
-    else:
-        remaining = np.setdiff1d(np.arange(N), must_include)
-        extra = rng.choice(remaining, size=min(n_sample - must_include.size, remaining.size),
-                           replace=False)
-        sample_idx = np.concatenate([must_include, extra])
+    query_idx = np.union1d(A_idx, B_idx_cent)
 
-    # Use unweighted shortest paths for betweenness estimation
+    # Use unweighted shortest paths on the symmetrized connectivity graph.
     adj_binary = (K != 0).astype(float)
     adj_sym_binary = ((adj_binary + adj_binary.T) > 0).astype(float)
 
-    # Count how often each node appears on shortest paths from sample sources
-    betweenness = np.zeros(N)
-    dist_mat = shortest_path(adj_sym_binary, directed=False, indices=sample_idx,
-                             return_predecessors=False)
-    # Simple proxy: inverse of average distance (closeness-like centrality)
-    for idx, src in enumerate(sample_idx):
-        d = dist_mat[idx]
-        finite = d[np.isfinite(d) & (d > 0)]
-        if finite.size > 0:
-            betweenness[src] = finite.size / finite.sum()
+    closeness = np.zeros(N, dtype=float)
+    if query_idx.size > 0:
+        dist_mat = shortest_path(
+            adj_sym_binary,
+            directed=False,
+            indices=query_idx,
+            return_predecessors=False,
+        )
+        for row_i, src in enumerate(query_idx):
+            d = dist_mat[row_i]
+            finite = d[np.isfinite(d) & (d > 0)]
+            if finite.size > 0:
+                closeness[src] = finite.size / finite.sum()
 
-    if betweenness.sum() > 0:
-        betweenness /= betweenness.sum()
-    feats["closeness_centrality_A"] = float(betweenness[A_sel].sum())
-    feats["closeness_centrality_B"] = float(betweenness[B_sel].sum())
+    feats["closeness_centrality_A"] = float(closeness[A_sel].sum())
+    feats["closeness_centrality_B"] = float(closeness[B_sel].sum())
 
     return feats
 

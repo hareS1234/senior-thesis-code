@@ -239,10 +239,13 @@ def build_edge_features(
     # Forward log-rate: log(K[i,j])
     edge_attr[:, 0] = np.log(np.clip(rates, 1e-300, None))
 
-    # Reverse log-rate: log(K[j,i]) (vectorized sparse fancy indexing)
+    # Reverse log-rate: log(K[j,i]) where present; else 0 by convention.
     K_csr = K.tocsr()
     rev_rates = np.asarray(K_csr[cols, rows]).ravel().astype(float)
-    edge_attr[:, 1] = np.log(np.clip(rev_rates, 1e-300, None))
+    rev_log = np.zeros(n_edges, dtype=np.float32)
+    has_reverse = rev_rates > 0
+    rev_log[has_reverse] = np.log(np.clip(rev_rates[has_reverse], 1e-300, None))
+    edge_attr[:, 1] = rev_log
 
     # Branching probability for the same directed edge j->i is B[i,j]
     B_csr = B_mat.tocsr()
@@ -296,7 +299,17 @@ class KTNDataset(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return ["ktn_data.pt"]
+        # Cache key includes build settings to avoid stale dataset reuse.
+        tag = temp_tag(self.T)
+        node_tag = "with_node_targets" if self.compute_node_targets else "no_node_targets"
+        tgt_tag = self.targets_csv.stem if self.targets_csv is not None else "no_targets"
+        base_tag = self.base_dir.name if self.base_dir is not None else "default_base"
+
+        def _safe(s: str) -> str:
+            return "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in s)
+
+        fname = f"ktn_data_{_safe(base_tag)}_{tag}_{node_tag}_{_safe(tgt_tag)}.pt"
+        return [fname]
 
     def process(self):
         # Load graph-level targets
