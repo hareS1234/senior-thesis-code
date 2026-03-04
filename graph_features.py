@@ -116,7 +116,7 @@ def compute_spectral_features(
     if k <= 1:
         return {f"spectral_{name}": np.nan for name in [
             "gap", "gap_ratio", "fiedler", "ramanujan_score",
-            "spectral_entropy", "effective_dimension"]}
+            "entropy", "effective_dimension"]}
 
     pi_safe = np.clip(np.asarray(pi, dtype=float), 1e-300, None)
     sqrt_pi = np.sqrt(pi_safe)
@@ -151,13 +151,13 @@ def compute_spectral_features(
     if vals is None:
         return {f"spectral_{name}": np.nan for name in [
             "gap", "gap_ratio", "fiedler", "ramanujan_score",
-            "spectral_entropy", "effective_dimension"]}
+            "entropy", "effective_dimension"]}
 
     nonzero = vals[vals < -1e-12]
     if nonzero.size == 0:
         return {f"spectral_{name}": np.nan for name in [
             "gap", "gap_ratio", "fiedler", "ramanujan_score",
-            "spectral_entropy", "effective_dimension"]}
+            "entropy", "effective_dimension"]}
 
     lambda1 = nonzero[0]  # closest to 0 (least negative)
     feats["spectral_gap"] = float(-lambda1)  # positive
@@ -172,7 +172,8 @@ def compute_spectral_features(
 
     # Ramanujan score: spectral_gap / (2*sqrt(d-1)) where d = mean degree
     K_binary = (Q.copy() != 0).astype(float)
-    np.fill_diagonal(K_binary.A if hasattr(K_binary, 'A') else K_binary.toarray(), 0)
+    K_binary.setdiag(0)
+    K_binary.eliminate_zeros()
     mean_deg = float(K_binary.sum()) / N
     d_eff = max(mean_deg, 2.0)
     feats["spectral_ramanujan_score"] = feats["spectral_gap"] / (2.0 * np.sqrt(d_eff - 1))
@@ -250,11 +251,21 @@ def compute_centrality_features(
         feats["eigvec_centrality_A"] = np.nan
         feats["eigvec_centrality_B"] = np.nan
 
-    # Approximate betweenness centrality
+    # Approximate closeness centrality
     # For large networks, sample a subset of source nodes
+    # Always include A/B nodes in the sample so their centrality is computed
+    A_idx = np.where(A_sel)[0]
+    B_idx_cent = np.where(B_sel)[0]
+    must_include = np.union1d(A_idx, B_idx_cent)
     n_sample = min(200, N)
     rng = np.random.default_rng(42)
-    sample_idx = rng.choice(N, size=n_sample, replace=False)
+    if must_include.size >= n_sample:
+        sample_idx = must_include[:n_sample]
+    else:
+        remaining = np.setdiff1d(np.arange(N), must_include)
+        extra = rng.choice(remaining, size=min(n_sample - must_include.size, remaining.size),
+                           replace=False)
+        sample_idx = np.concatenate([must_include, extra])
 
     # Use unweighted shortest paths for betweenness estimation
     adj_binary = (K != 0).astype(float)
