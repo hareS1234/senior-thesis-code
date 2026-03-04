@@ -30,7 +30,9 @@ from sklearn.linear_model import (
     LinearRegression, Ridge, Lasso, ElasticNet, RidgeCV, LassoCV, ElasticNetCV,
 )
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.inspection import permutation_importance
@@ -73,7 +75,10 @@ def load_and_merge_data(
 
     df = feat_df.merge(tgt_df, on="dps_dir", how="inner", suffixes=("", "_tgt"))
 
-    # Keep complete rows and partially-computed rows; exclude hard failures.
+    # Keep rows where features were at least partially extracted.
+    # "OK" means all feature groups succeeded; "PARTIAL(...)" means some
+    # groups failed but others have valid values.  The imputer in the
+    # LOO-CV pipeline handles the resulting NaNs.
     if "status" in df.columns:
         status = df["status"].astype(str)
         df = df[status.eq("OK") | status.str.startswith("PARTIAL")].copy()
@@ -136,7 +141,11 @@ def run_loocv(
     model_kwargs: dict,
 ) -> Tuple[np.ndarray, Dict[str, float]]:
     """
-    Leave-one-out CV with per-fold standardization.
+    Leave-one-out CV with per-fold imputation and standardization.
+
+    Each fold fits its own SimpleImputer (median) → StandardScaler → model
+    pipeline to prevent data leakage while preserving samples that have
+    partial NaN features (e.g., missing barrier distances).
 
     Returns predictions and metrics dict.
     """
@@ -147,9 +156,12 @@ def run_loocv(
         X_train, X_test = X[train_idx], X[test_idx]
         y_train = y[train_idx]
 
-        scaler = StandardScaler()
-        X_train_s = scaler.fit_transform(X_train)
-        X_test_s = scaler.transform(X_test)
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ])
+        X_train_s = pipe.fit_transform(X_train)
+        X_test_s = pipe.transform(X_test)
 
         model = model_class(**model_kwargs)
         try:
@@ -235,8 +247,11 @@ def compute_feature_importance(
     if model_kwargs is None:
         model_kwargs = {"n_estimators": 100, "max_depth": 4, "random_state": 42}
 
-    scaler = StandardScaler()
-    X_s = scaler.fit_transform(X)
+    pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+    ])
+    X_s = pipe.fit_transform(X)
 
     model = model_class(**model_kwargs)
     model.fit(X_s, y)
@@ -428,9 +443,10 @@ def main():
         return
 
     for target in targets:
-        # Keep as many samples as possible for this specific target.
-        df_target = df.dropna(subset=feature_cols + [target]).copy()
-        print(f"[ml_regression] {target}: {len(df_target)} networks after dropping NaNs.")
+        # Drop only rows missing the target; NaN features are handled by
+        # the SimpleImputer inside the LOO-CV pipeline.
+        df_target = df.dropna(subset=[target]).copy()
+        print(f"[ml_regression] {target}: {len(df_target)} networks (NaN features imputed).")
         if len(df_target) < 10:
             print(f"  [ml_regression] Skipping {target}: too few samples.")
             continue

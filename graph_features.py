@@ -225,6 +225,11 @@ def compute_spectral_features(
 
     if nonzero.size >= 2:
         lambda2 = nonzero[1]
+        # Ratio of the two smallest-magnitude non-zero eigenvalues:
+        #   lambda1/lambda2 = |λ₂|/|λ₃| = t₂/t₁
+        # where t_k = -1/λ_k are the relaxation times (λ₁=0 is trivial).
+        # Values near 1 → the two slowest processes have similar timescales;
+        # values near 0 → the slowest process is well-separated.
         feats["spectral_gap_ratio"] = float(lambda1 / lambda2)
     else:
         feats["spectral_gap_ratio"] = np.nan
