@@ -33,43 +33,48 @@ from io_markov import load_markov, load_AB_selectors, temp_tag
 #  1. Distance features
 # ======================================================================
 
-def _rate_length_matrix(K: csr_matrix, min_rate: float = 1e-300) -> csr_matrix:
-    """Build sparse matrix L where L[i,j] = -log(k_{i<-j}) for k>0."""
-    K_coo = K.tocoo()
-    mask = K_coo.data > min_rate
-    rows, cols = K_coo.row[mask], K_coo.col[mask]
-    data = -np.log(K_coo.data[mask])
-    return coo_matrix((data, (rows, cols)), shape=K.shape).tocsr()
+def _branching_length_matrix(B: csr_matrix) -> csr_matrix:
+    """Build sparse distance matrix L where L[i,j] = -log(B_{i,j}).
+
+    B is the branching probability matrix with B_ij in (0,1],
+    so -log(B_ij) >= 0 — safe for Dijkstra's algorithm.
+    """
+    B_coo = B.tocoo()
+    mask = B_coo.data > 0
+    rows, cols = B_coo.row[mask], B_coo.col[mask]
+    data = -np.log(np.clip(B_coo.data[mask], 1e-300, None))
+    return coo_matrix((data, (rows, cols)), shape=B.shape).tocsr()
 
 
 def compute_distance_features(
-    K: csr_matrix,
+    B: csr_matrix,
     A_sel: np.ndarray,
     B_sel: np.ndarray,
     barrier_mat: Optional[csr_matrix] = None,
 ) -> Dict[str, float]:
     """
-    Compute A<->B distance features from rate and barrier matrices.
+    Compute A<->B distance features from branching and barrier matrices.
 
-    Rate-based distances use edge weight = -log(k_ij), computed via
+    Branching-based distances use edge weight = -log(B_ij) where B is
+    the branching probability matrix (entries in (0,1]), computed via
     Dijkstra on a directed graph.  Barrier-based distances use the
     undirected barrier-height matrix (if provided).
     """
     feats: Dict[str, float] = {}
     A_idx = np.where(A_sel)[0]
-    B_idx = np.where(B_sel)[0]
+    B_idx_dist = np.where(B_sel)[0]
 
-    # --- Rate-based distances (directed) ---
-    L = _rate_length_matrix(K)
+    # --- Branching-probability distances (directed, non-negative) ---
+    L = _branching_length_matrix(B)
     # A -> B
     dist_from_A = shortest_path(L, directed=True, indices=A_idx)
-    ab_dists = dist_from_A[:, B_idx]  # |A| x |B|
+    ab_dists = dist_from_A[:, B_idx_dist]  # |A| x |B|
     finite_ab = ab_dists[np.isfinite(ab_dists)]
     feats["rate_dist_AB_min"] = float(np.min(finite_ab)) if finite_ab.size else np.nan
     feats["rate_dist_AB_mean"] = float(np.mean(finite_ab)) if finite_ab.size else np.nan
 
     # B -> A
-    dist_from_B = shortest_path(L, directed=True, indices=B_idx)
+    dist_from_B = shortest_path(L, directed=True, indices=B_idx_dist)
     ba_dists = dist_from_B[:, A_idx]
     finite_ba = ba_dists[np.isfinite(ba_dists)]
     feats["rate_dist_BA_min"] = float(np.min(finite_ba)) if finite_ba.size else np.nan
@@ -84,7 +89,7 @@ def compute_distance_features(
     # --- Barrier-based distances (undirected) ---
     if barrier_mat is not None:
         bdist = shortest_path(barrier_mat, directed=False, indices=A_idx)
-        bab = bdist[:, B_idx]
+        bab = bdist[:, B_idx_dist]
         finite_bab = bab[np.isfinite(bab)]
         feats["barrier_dist_AB_min"] = float(np.min(finite_bab)) if finite_bab.size else np.nan
         feats["barrier_dist_AB_mean"] = float(np.mean(finite_bab)) if finite_bab.size else np.nan
@@ -596,7 +601,7 @@ def extract_features_one(
     print(f"  [graph_features] {dps_dir.name}: N={Q.shape[0]}, "
           f"|A|={A_sel.sum()}, |B|={B_sel.sum()}")
 
-    row.update(compute_distance_features(K, A_sel, B_sel, barrier_mat))
+    row.update(compute_distance_features(B, A_sel, B_sel, barrier_mat))
     row.update(compute_spectral_features(Q, pi))
     row.update(compute_centrality_features(K, pi, A_sel, B_sel))
     row.update(compute_community_features(K, pi, A_sel, B_sel))
