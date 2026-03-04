@@ -159,48 +159,63 @@ def _rate_length_matrix(K: csr_matrix, min_rate: float = 1e-300) -> csr_matrix:
 
 def compute_distance_features(
     B: csr_matrix,
+    K: csr_matrix,
     A_sel: np.ndarray,
     B_sel: np.ndarray,
     barrier_mat: Optional[csr_matrix] = None,
 ) -> Dict[str, float]:
     """
-    Compute A<->B distance features from branching and barrier matrices.
+    Compute A<->B distance features from branching, rate, and barrier matrices.
 
-    Branching-based distances use edge weight = -log(B_ij) where B is
-    the branching probability matrix (entries in (0,1]), computed via
-    Dijkstra on a directed graph.  Barrier-based distances use the
-    undirected barrier-height matrix (if provided).
+    Three distance types:
+      - branch_dist_*: edge weight = -log(B_ij), branching probabilities
+      - rate_dist_*:   edge weight = -log(K_ij), transition rates
+      - barrier_dist_*: edge weight = barrier height (if available)
     """
     feats: Dict[str, float] = {}
     A_idx = np.where(A_sel)[0]
     B_idx_dist = np.where(B_sel)[0]
 
-    # --- Branching-probability distances (directed, non-negative) ---
-    L = _branching_length_matrix(B)
-    # A -> B
-    dist_from_A = shortest_path(L, directed=True, indices=A_idx)
-    ab_dists = dist_from_A[:, B_idx_dist]  # |A| x |B|
+    # --- Branching-probability distances (directed, -log B) ---
+    L_branch = _branching_length_matrix(B)
+    dist_from_A = shortest_path(L_branch, directed=True, indices=A_idx)
+    ab_dists = dist_from_A[:, B_idx_dist]
     finite_ab = ab_dists[np.isfinite(ab_dists)]
-    feats["rate_dist_AB_min"] = float(np.min(finite_ab)) if finite_ab.size else np.nan
-    feats["rate_dist_AB_mean"] = float(np.mean(finite_ab)) if finite_ab.size else np.nan
+    feats["branch_dist_AB_min"] = float(np.min(finite_ab)) if finite_ab.size else np.nan
+    feats["branch_dist_AB_mean"] = float(np.mean(finite_ab)) if finite_ab.size else np.nan
 
-    # B -> A
-    dist_from_B = shortest_path(L, directed=True, indices=B_idx_dist)
+    dist_from_B = shortest_path(L_branch, directed=True, indices=B_idx_dist)
     ba_dists = dist_from_B[:, A_idx]
     finite_ba = ba_dists[np.isfinite(ba_dists)]
-    feats["rate_dist_BA_min"] = float(np.min(finite_ba)) if finite_ba.size else np.nan
-    feats["rate_dist_BA_mean"] = float(np.mean(finite_ba)) if finite_ba.size else np.nan
+    feats["branch_dist_BA_min"] = float(np.min(finite_ba)) if finite_ba.size else np.nan
+    feats["branch_dist_BA_mean"] = float(np.mean(finite_ba)) if finite_ba.size else np.nan
 
-    # Asymmetry
     if finite_ab.size and finite_ba.size:
+        feats["branch_dist_asymmetry"] = abs(feats["branch_dist_AB_min"] - feats["branch_dist_BA_min"])
+    else:
+        feats["branch_dist_asymmetry"] = np.nan
+
+    # --- Rate-based distances (directed, -log K) ---
+    L_rate = _rate_length_matrix(K)
+    rdist_from_A = shortest_path(L_rate, directed=True, indices=A_idx)
+    rab = rdist_from_A[:, B_idx_dist]
+    finite_rab = rab[np.isfinite(rab)]
+    feats["rate_dist_AB_min"] = float(np.min(finite_rab)) if finite_rab.size else np.nan
+    feats["rate_dist_AB_mean"] = float(np.mean(finite_rab)) if finite_rab.size else np.nan
+
+    rdist_from_B = shortest_path(L_rate, directed=True, indices=B_idx_dist)
+    rba = rdist_from_B[:, A_idx]
+    finite_rba = rba[np.isfinite(rba)]
+    feats["rate_dist_BA_min"] = float(np.min(finite_rba)) if finite_rba.size else np.nan
+    feats["rate_dist_BA_mean"] = float(np.mean(finite_rba)) if finite_rba.size else np.nan
+
+    if finite_rab.size and finite_rba.size:
         feats["rate_dist_asymmetry"] = abs(feats["rate_dist_AB_min"] - feats["rate_dist_BA_min"])
     else:
         feats["rate_dist_asymmetry"] = np.nan
 
     # --- Barrier-based distances (undirected) ---
     if barrier_mat is not None:
-        # Barrier matrices are conceptually undirected; enforce symmetry to avoid
-        # indexing/orientation issues if the file stores only one triangle.
         barrier = barrier_mat.tocsr()
         barrier = 0.5 * (barrier + barrier.T)
         barrier.setdiag(0)
@@ -250,14 +265,19 @@ def compute_spectral_features(
     Sinv = diags(inv_sqrt_pi)
     L_sym = S @ Q.T @ Sinv
 
-    # Symmetrize if close
+    # Always symmetrize: eigsh requires a symmetric operator, and for
+    # detailed-balance CTMCs the similarity transform should be symmetric.
+    # Warn if the asymmetry is large (indicates numerical issues or
+    # departure from detailed balance).
     try:
         from scipy.sparse.linalg import norm as spnorm
         asym = spnorm(L_sym - L_sym.T, ord=1) / max(spnorm(L_sym, ord=1), 1e-300)
-        if asym < 1e-8:
-            L_sym = 0.5 * (L_sym + L_sym.T)
+        if asym > 1e-6:
+            warnings.warn(f"Spectral: asymmetry = {asym:.2e} (>1e-6), "
+                          f"symmetrizing anyway for eigsh stability.")
     except Exception:
         pass
+    L_sym = 0.5 * (L_sym + L_sym.T)
 
     vals = None
     try:
@@ -554,7 +574,7 @@ def compute_path_features(
     nan_feats = {
         "shortest_path_hops_AB": np.nan,
         "rate_shortest_path_AB": np.nan,
-        "n_short_paths_AB": np.nan,
+        "n_short_pairs_AB": np.nan,
         "path_redundancy": np.nan,
     }
 
@@ -589,11 +609,11 @@ def compute_path_features(
     except Exception:
         feats["rate_shortest_path_AB"] = np.nan
 
-    # Estimate path redundancy: number of neighbors of A that also connect to B
-    # within a short hop count
+    # Count of A-B pairs reachable within 2× the shortest hop distance
+    # (proxy for path redundancy, not a count of distinct paths)
     threshold = min_hops * 2
     n_short = int(np.sum(finite_hops <= threshold))
-    feats["n_short_paths_AB"] = n_short
+    feats["n_short_pairs_AB"] = n_short
 
     # Path redundancy ratio
     feats["path_redundancy"] = n_short / max(A_idx.size * B_idx.size, 1)
@@ -617,16 +637,18 @@ def compute_topology_features(K: csr_matrix) -> Dict[str, float]:
     n_directed_edges = int(off_diag_mask.sum())
     feats["n_edges_directed"] = n_directed_edges
 
-    # Undirected edges
+    # Undirected edges (binarized: 1 if edge exists in either direction)
     adj_sym = ((K != 0) + (K.T != 0)).astype(float)
     adj_sym.setdiag(0)
     adj_sym.eliminate_zeros()
+    # Binarize so mutual edges count as 1, not 2
+    adj_sym = (adj_sym > 0).astype(float)
     n_undirected = adj_sym.nnz // 2
     feats["n_edges_undirected"] = n_undirected
 
     feats["density"] = n_undirected / max(N * (N - 1) / 2, 1)
 
-    # Degree statistics (undirected)
+    # Degree statistics (undirected, from binarized adjacency)
     degrees = np.asarray(adj_sym.sum(axis=1)).ravel()
     feats["degree_mean"] = float(np.mean(degrees))
     feats["degree_std"] = float(np.std(degrees))
@@ -656,11 +678,10 @@ def compute_topology_features(K: csr_matrix) -> Dict[str, float]:
 
     # Local clustering coefficient (sparse triangle counting)
     # C_i = 2 * triangles(i) / (deg(i) * (deg(i) - 1))
-    adj_bin = adj_sym.copy()
-    adj_bin.data[:] = 1.0
-    A2 = adj_bin @ adj_bin
+    # adj_sym is already binarized above
+    A2 = adj_sym @ adj_sym
     # triangles(i) = (A^2 .* A)[i,i] / 2  (element-wise multiply, then diagonal)
-    A2_A = A2.multiply(adj_bin)
+    A2_A = A2.multiply(adj_sym)
     triangles = np.asarray(A2_A.sum(axis=1)).ravel() / 2.0
     denom = degrees * (degrees - 1)
     denom[denom == 0] = 1.0
@@ -735,7 +756,7 @@ def extract_features_one(
 
     warnings_list = []
     for name, fn in [
-        ("distance", lambda: compute_distance_features(B, A_sel, B_sel, barrier_mat)),
+        ("distance", lambda: compute_distance_features(B, K, A_sel, B_sel, barrier_mat)),
         ("spectral", lambda: compute_spectral_features(Q, pi)),
         ("centrality", lambda: compute_centrality_features(K, pi, A_sel, B_sel)),
         ("community", lambda: compute_community_features(K, pi, A_sel, B_sel)),

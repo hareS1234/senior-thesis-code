@@ -159,25 +159,36 @@ def build_node_features(
     tau: np.ndarray,
     A_sel: np.ndarray,
     B_sel: np.ndarray,
+    K: Optional[csr_matrix] = None,
     energies: Optional[np.ndarray] = None,
     entropies: Optional[np.ndarray] = None,
 ) -> torch.Tensor:
     """
     Build node feature matrix [N, D_node].
 
-    Features (standardized within each graph):
-        0: log(pi)
-        1: log(tau)
-        2: energy        (if available, else 0)
-        3: entropy       (if available, else 0)
-        4: is_A          (binary)
-        5: is_B          (binary)
+    Features:
+        0: log(pi)          (standardized within graph)
+        1: log(tau)          (standardized within graph)
+        2: energy            (standardized within graph, or 0)
+        3: entropy           (standardized within graph, or 0)
+        4: is_A              (binary)
+        5: is_B              (binary)
+        6: mean_log_rate     (global scalar, same for all nodes)
+        7: std_log_rate      (global scalar, same for all nodes)
+        8: mean_log_tau      (global scalar, same for all nodes)
+
+    Columns 6-8 are *not* standardized within the graph.  They encode the
+    absolute kinetic scale of this network, which is critical for
+    graph-level MFPT prediction across different sequences.
     """
     N = pi.size
-    feats = np.zeros((N, 6), dtype=np.float32)
+    feats = np.zeros((N, 9), dtype=np.float32)
 
-    feats[:, 0] = np.log(np.clip(pi, 1e-300, None))
-    feats[:, 1] = np.log(np.clip(tau, 1e-300, None))
+    log_pi = np.log(np.clip(pi, 1e-300, None))
+    log_tau = np.log(np.clip(tau, 1e-300, None))
+
+    feats[:, 0] = log_pi
+    feats[:, 1] = log_tau
 
     if energies is not None and energies.size == N:
         feats[:, 2] = energies
@@ -195,6 +206,21 @@ def build_node_features(
 
     feats[:, 4] = A_sel.astype(np.float32)
     feats[:, 5] = B_sel.astype(np.float32)
+
+    # Global-scale features (constant across all nodes in this graph,
+    # NOT standardized, so the model can learn cross-graph scale differences)
+    if K is not None:
+        K_coo = K.tocoo()
+        off_diag = K_coo.data[K_coo.row != K_coo.col]
+        if off_diag.size > 0:
+            log_rates = np.log(np.clip(off_diag, 1e-300, None))
+            feats[:, 6] = float(np.mean(log_rates))
+            feats[:, 7] = float(np.std(log_rates))
+        # else columns stay 0
+
+    finite_log_tau = log_tau[np.isfinite(log_tau)]
+    if finite_log_tau.size > 0:
+        feats[:, 8] = float(np.mean(finite_log_tau))
 
     return torch.from_numpy(feats)
 
@@ -258,14 +284,28 @@ def build_edge_features(
     # Binary indicator for reverse edge existence
     edge_attr[:, 3] = has_reverse.astype(np.float32)
 
-    # Standardize log-rate columns (0 and 1) within this graph
-    for c in (0, 1):
-        vals = edge_attr[:, c]
-        finite = vals[np.isfinite(vals)]
-        if finite.size > 1 and finite.std() > 0:
-            edge_attr[:, c] = (vals - finite.mean()) / finite.std()
+    # Standardize forward log-rates (column 0) over all edges.
+    fwd = edge_attr[:, 0]
+    finite_fwd = fwd[np.isfinite(fwd)]
+    if finite_fwd.size > 1 and finite_fwd.std() > 0:
+        edge_attr[:, 0] = (fwd - finite_fwd.mean()) / finite_fwd.std()
+    else:
+        edge_attr[:, 0] = 0.0
+
+    # Standardize reverse log-rates (column 1) only over edges that
+    # actually have a reverse edge, so the sentinel 0 for missing
+    # reverse edges doesn't pollute the mean/std.  Edges without a
+    # reverse edge stay at 0; the has_reverse flag (column 3) lets the
+    # model distinguish them.
+    rev_mask = has_reverse
+    if rev_mask.sum() > 1:
+        rev_vals = edge_attr[rev_mask, 1]
+        mu, sigma = rev_vals.mean(), rev_vals.std()
+        if sigma > 0:
+            edge_attr[rev_mask, 1] = (rev_vals - mu) / sigma
         else:
-            edge_attr[:, c] = 0.0
+            edge_attr[rev_mask, 1] = 0.0
+    # Missing-reverse edges keep their 0.0 sentinel
 
     return edge_index, torch.from_numpy(edge_attr)
 
@@ -304,7 +344,7 @@ class KTNDataset(InMemoryDataset):
         self.load(self.processed_paths[0])
 
     # Bump this when node/edge feature definitions change to invalidate cache.
-    _FEATURE_VERSION = "v2"  # v2: added has_reverse_edge binary indicator
+    _FEATURE_VERSION = "v3"  # v3: fixed reverse-edge standardization + global-scale features
 
     @property
     def processed_file_names(self):
@@ -371,7 +411,7 @@ class KTNDataset(InMemoryDataset):
                 entropies = np.load(spath)
 
             # Build features
-            x = build_node_features(pi, tau, A_sel, B_sel, energies, entropies)
+            x = build_node_features(pi, tau, A_sel, B_sel, K, energies, entropies)
             edge_index, edge_attr = build_edge_features(K, B_mat)
 
             data = Data(
