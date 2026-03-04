@@ -102,7 +102,16 @@ def get_feature_cols(df: pd.DataFrame) -> List[str]:
     for col in df.columns:
         if col in exclude:
             continue
-        if col.startswith("log_") or col.startswith("lambda") or col.startswith("t1") or col.startswith("t2"):
+        # Exclude derived log columns, eigenvalue columns, timescale columns,
+        # and other target-adjacent columns from the GTcheck CSV
+        if col.startswith("log_") or col.startswith("lambda"):
+            continue
+        if col in ("t1", "t2", "t3", "t4", "t5", "t1_over_t2",
+                   "MFPT_coarse_AB", "MFPT_coarse_BA",
+                   "MFPT_micro_AB", "MFPT_micro_BA",
+                   "N_micro", "N_coarse", "nA_micro", "nA_coarse",
+                   "nB_micro", "nB_coarse",
+                   "relerr_AB", "relerr_BA", "log10_ratio_AB", "log10_ratio_BA"):
             continue
         if df[col].dtype in (np.float64, np.float32, np.int64, np.int32, float, int):
             # Check it's not all NaN
@@ -143,9 +152,9 @@ def run_loocv(
 
     mask = np.isfinite(y_pred) & np.isfinite(y)
     metrics = {
-        "r2": float(r2_score(y[mask], y_pred[mask])),
-        "rmse": float(np.sqrt(mean_squared_error(y[mask], y_pred[mask]))),
-        "mae": float(mean_absolute_error(y[mask], y_pred[mask])),
+        "R2": float(r2_score(y[mask], y_pred[mask])),
+        "RMSE": float(np.sqrt(mean_squared_error(y[mask], y_pred[mask]))),
+        "MAE": float(mean_absolute_error(y[mask], y_pred[mask])),
         "n": int(mask.sum()),
     }
     return y_pred, metrics
@@ -212,9 +221,9 @@ def compute_feature_importance(
                                     random_state=42, scoring="r2")
     imp_df = pd.DataFrame({
         "feature": feature_names,
-        "importance_mean": result.importances_mean,
+        "importance": result.importances_mean,
         "importance_std": result.importances_std,
-    }).sort_values("importance_mean", ascending=False)
+    }).sort_values("importance", ascending=False)
     return imp_df
 
 
@@ -248,8 +257,8 @@ def forward_selection(
             candidate = selected + [f]
             X_sub = X[:, candidate]
             _, metrics = run_loocv(X_sub, y, model_class, model_kwargs)
-            if metrics["r2"] > best_r2:
-                best_r2 = metrics["r2"]
+            if metrics["R2"] > best_r2:
+                best_r2 = metrics["R2"]
                 best_feat = f
 
         if best_feat is None:
@@ -259,13 +268,13 @@ def forward_selection(
         remaining.remove(best_feat)
         history.append({
             "step": step + 1,
-            "feature_added": feature_names[best_feat],
-            "r2_loocv": best_r2,
+            "feature": feature_names[best_feat],
+            "R2": best_r2,
             "features_so_far": ", ".join(feature_names[i] for i in selected),
         })
 
         # Stop if R² is decreasing
-        if step > 0 and best_r2 < history[-2]["r2_loocv"] - 0.01:
+        if step > 0 and best_r2 < history[-2]["R2"] - 0.01:
             break
 
     return pd.DataFrame(history)
@@ -323,7 +332,7 @@ def plot_feature_importance(
     """Horizontal bar chart of top feature importances."""
     df = imp_df.head(top_n).iloc[::-1]
     fig, ax = plt.subplots(1, 1, figsize=(8, 0.4 * len(df) + 1.5))
-    ax.barh(df["feature"], df["importance_mean"],
+    ax.barh(df["feature"], df["importance"],
             xerr=df["importance_std"], color="steelblue", alpha=0.8)
     ax.set_xlabel("Permutation Importance (R² decrease)", fontsize=11)
     ax.set_title(f"Feature Importance for {target_name}", fontsize=12)
@@ -339,10 +348,10 @@ def plot_forward_selection(
 ):
     """R² vs number of features plot."""
     fig, ax = plt.subplots(1, 1, figsize=(7, 4.5))
-    ax.plot(sel_df["step"], sel_df["r2_loocv"], "o-", color="steelblue",
+    ax.plot(sel_df["step"], sel_df["R2"], "o-", color="steelblue",
             markersize=8, linewidth=2)
     for _, row in sel_df.iterrows():
-        ax.annotate(row["feature_added"], (row["step"], row["r2_loocv"]),
+        ax.annotate(row["feature"], (row["step"], row["R2"]),
                     fontsize=7, rotation=15, ha="left",
                     xytext=(5, 5), textcoords="offset points")
     ax.set_xlabel("Number of Features", fontsize=12)
@@ -427,15 +436,36 @@ def main():
         plot_forward_selection(sel, target,
                                args.out_dir / f"forward_selection_{target}.png")
 
-        # 4) Best model predicted vs actual plot
-        best_model_name = comp["r2"].idxmax()
+        # 4) Best model predicted vs actual plot + predictions CSV
+        best_model_name = comp["R2"].idxmax()
         best_cls, best_kwargs = MODELS[best_model_name]
         y_pred, _ = run_loocv(X, y, best_cls, best_kwargs)
         plot_predicted_vs_actual(
             y, y_pred, labels, target, best_model_name,
             args.out_dir / f"pred_vs_actual_{target}.png",
         )
-        print(f"  Best model: {best_model_name} (R² = {comp.loc[best_model_name, 'r2']:.3f})")
+
+        # Save predictions CSV for notebook consumption
+        pred_df = pd.DataFrame({
+            "dps_dir": df_clean["dps_dir"].values,
+            "actual": y,
+            "predicted": y_pred,
+        })
+        pred_df.to_csv(args.out_dir / f"predictions_{target}.csv", index=False)
+
+        print(f"  Best model: {best_model_name} (R² = {comp.loc[best_model_name, 'R2']:.3f})")
+
+    # Aggregate model comparison across all targets into one CSV
+    all_comp_files = sorted(args.out_dir.glob("model_comparison_*.csv"))
+    if all_comp_files:
+        dfs = []
+        for f in all_comp_files:
+            tgt = f.stem.replace("model_comparison_", "")
+            comp_df = pd.read_csv(f, index_col=0)
+            comp_df["target"] = tgt
+            dfs.append(comp_df)
+        combined = pd.concat(dfs, ignore_index=False)
+        combined.to_csv(args.out_dir / "model_comparison.csv")
 
     print(f"\n[ml_regression] Results saved to {args.out_dir}/")
 
