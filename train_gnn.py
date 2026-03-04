@@ -56,6 +56,7 @@ def train_node_level(
     weight_decay: float = 1e-4,
     train_frac: float = 0.8,
     seed: int = 42,
+    max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
     """
@@ -157,6 +158,7 @@ def train_node_level(
             train_loss = losses[batch.train_mask].mean()
             optimizer.zero_grad()
             train_loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             optimizer.step()
 
             total_train_loss += train_loss.item() * batch.train_mask.sum().item()
@@ -272,6 +274,7 @@ def train_graph_level_loocv(
     weight_decay: float = 1e-4,
     patience: int = 50,
     n_seeds: int = 5,
+    max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
     """
@@ -298,6 +301,7 @@ def train_graph_level_loocv(
     sample = valid_data[0]
     node_dim = sample.x.shape[1]
     edge_dim = sample.edge_attr.shape[1] if sample.edge_attr is not None else 0
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     y_true = np.array([d.y[0, target_idx].item() for d in valid_data])
     y_pred_all = np.zeros((N, n_seeds))
@@ -309,8 +313,6 @@ def train_graph_level_loocv(
 
         for seed in range(n_seeds):
             torch.manual_seed(seed * 1000 + fold_idx)
-
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
             model = KTNGraphModel(
                 node_dim=node_dim, edge_dim=edge_dim, hidden_dim=hidden_dim,
@@ -347,6 +349,7 @@ def train_graph_level_loocv(
                     loss = F.mse_loss(pred, target)
                     optimizer.zero_grad()
                     loss.backward()
+                    nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
                     optimizer.step()
 
                 # Validation
@@ -446,6 +449,7 @@ def train_multitask(
     weight_decay: float = 1e-4,
     patience: int = 50,
     n_seeds: int = 5,
+    max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
     """
@@ -475,6 +479,7 @@ def train_multitask(
     sample = valid_data[0]
     node_dim = sample.x.shape[1]
     edge_dim = sample.edge_attr.shape[1] if sample.edge_attr is not None else 0
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     y_true = np.array([d.y[0, target_idx].item() for d in valid_data])
     y_pred_all = np.zeros((N, n_seeds))
@@ -490,7 +495,6 @@ def train_multitask(
 
         for seed in range(n_seeds):
             torch.manual_seed(seed * 1000 + fold_idx)
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
             model = KTNMultiTaskModel(
                 node_dim=node_dim, edge_dim=edge_dim, hidden_dim=hidden_dim,
@@ -503,9 +507,15 @@ def train_multitask(
 
             train_loader = DataLoader(train_data, batch_size=4, shuffle=True)
 
-            # Stage 1: Joint pre-training
+            # Stage 1: Joint pre-training with early stopping
+            best_pretrain_loss = float("inf")
+            best_pretrain_state = copy.deepcopy(model.state_dict())
+            pretrain_wait = 0
+
             for epoch in range(pretrain_epochs):
                 model.train()
+                epoch_loss = 0.0
+                n_batches = 0
                 for batch in train_loader:
                     batch = batch.to(device)
                     node_pred, graph_pred = model(batch)
@@ -521,7 +531,22 @@ def train_multitask(
                     loss = alpha * n_loss + (1 - alpha) * g_loss
                     optimizer.zero_grad()
                     loss.backward()
+                    nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
                     optimizer.step()
+                    epoch_loss += loss.item()
+                    n_batches += 1
+
+                avg_loss = epoch_loss / max(n_batches, 1)
+                if avg_loss < best_pretrain_loss:
+                    best_pretrain_loss = avg_loss
+                    best_pretrain_state = copy.deepcopy(model.state_dict())
+                    pretrain_wait = 0
+                else:
+                    pretrain_wait += 1
+                    if pretrain_wait >= patience:
+                        break
+
+            model.load_state_dict(best_pretrain_state)
 
             # Stage 2: Fine-tune graph head only
             for param in model.backbone.parameters():
@@ -532,10 +557,12 @@ def train_multitask(
 
             best_loss = float("inf")
             best_state = copy.deepcopy(model.state_dict())
+            finetune_wait = 0
 
             for epoch in range(finetune_epochs):
                 model.train()
                 epoch_loss = 0.0
+                n_batches = 0
                 for batch in train_loader:
                     batch = batch.to(device)
                     _, graph_pred = model(batch)
@@ -543,12 +570,20 @@ def train_multitask(
                     loss = F.mse_loss(graph_pred.squeeze(-1), g_target)
                     optimizer.zero_grad()
                     loss.backward()
+                    nn.utils.clip_grad_norm_(model.graph_head.parameters(), max_grad_norm)
                     optimizer.step()
                     epoch_loss += loss.item()
+                    n_batches += 1
 
-                if epoch_loss < best_loss:
-                    best_loss = epoch_loss
+                avg_loss = epoch_loss / max(n_batches, 1)
+                if avg_loss < best_loss:
+                    best_loss = avg_loss
                     best_state = copy.deepcopy(model.state_dict())
+                    finetune_wait = 0
+                else:
+                    finetune_wait += 1
+                    if finetune_wait >= patience:
+                        break
 
             # Predict held-out
             model.load_state_dict(best_state)

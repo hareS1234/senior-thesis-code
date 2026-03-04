@@ -478,10 +478,15 @@ def compute_path_features(
     A_idx = np.where(A_sel)[0]
     B_idx = np.where(B_sel)[0]
 
+    nan_feats = {
+        "shortest_path_hops_AB": np.nan,
+        "rate_shortest_path_AB": np.nan,
+        "n_short_paths_AB": np.nan,
+        "path_redundancy": np.nan,
+    }
+
     if A_idx.size == 0 or B_idx.size == 0:
-        feats["shortest_path_hops_AB"] = np.nan
-        feats["n_short_paths_AB"] = np.nan
-        feats["path_redundancy"] = np.nan
+        feats.update(nan_feats)
         return feats
 
     # Hop-count shortest paths (unweighted)
@@ -492,9 +497,7 @@ def compute_path_features(
     finite_hops = hop_dists[np.isfinite(hop_dists)]
 
     if finite_hops.size == 0:
-        feats["shortest_path_hops_AB"] = np.nan
-        feats["n_short_paths_AB"] = np.nan
-        feats["path_redundancy"] = np.nan
+        feats.update(nan_feats)
         return feats
 
     min_hops = float(np.min(finite_hops))
@@ -649,17 +652,27 @@ def extract_features_one(
     except Exception:
         pass
 
-    # Compute all feature groups
+    # Compute all feature groups — guard each independently so a single
+    # failure doesn't lose all features for this network.
     print(f"  [graph_features] {dps_dir.name}: N={Q.shape[0]}, "
           f"|A|={A_sel.sum()}, |B|={B_sel.sum()}")
 
-    row.update(compute_distance_features(B, A_sel, B_sel, barrier_mat))
-    row.update(compute_spectral_features(Q, pi))
-    row.update(compute_centrality_features(K, pi, A_sel, B_sel))
-    row.update(compute_community_features(K, pi, A_sel, B_sel))
-    row.update(compute_path_features(K, A_sel, B_sel))
-    row.update(compute_topology_features(K))
-    row["status"] = "OK"
+    warnings_list = []
+    for name, fn in [
+        ("distance", lambda: compute_distance_features(B, A_sel, B_sel, barrier_mat)),
+        ("spectral", lambda: compute_spectral_features(Q, pi)),
+        ("centrality", lambda: compute_centrality_features(K, pi, A_sel, B_sel)),
+        ("community", lambda: compute_community_features(K, pi, A_sel, B_sel)),
+        ("path", lambda: compute_path_features(K, A_sel, B_sel)),
+        ("topology", lambda: compute_topology_features(K)),
+    ]:
+        try:
+            row.update(fn())
+        except Exception as e:
+            warnings_list.append(f"{name}: {type(e).__name__}: {e}")
+            print(f"    WARNING [{name}] {type(e).__name__}: {e}")
+
+    row["status"] = "OK" if not warnings_list else f"PARTIAL({'; '.join(warnings_list)})"
     return row
 
 
@@ -696,7 +709,9 @@ def main():
     print(f"\n[graph_features] Saved {len(df)} rows to {args.out}")
 
     ok = df[df["status"] == "OK"]
-    print(f"[graph_features] {len(ok)} OK, {len(df) - len(ok)} skipped/errored.")
+    partial = df[df["status"].str.startswith("PARTIAL", na=False)]
+    failed = len(df) - len(ok) - len(partial)
+    print(f"[graph_features] {len(ok)} OK, {len(partial)} partial, {failed} skipped/errored.")
 
 
 if __name__ == "__main__":

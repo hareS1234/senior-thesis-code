@@ -212,16 +212,19 @@ def build_edge_features(
     Therefore each nonzero off-diagonal entry K[i, j] corresponds to a directed
     edge (source=j) -> (target=i).
 
-    Edge features (D_edge = 3)
+    Edge features (D_edge = 4)
     -------------------------
         0: log(k_{i<-j})   forward log-rate
         1: log(k_{j<-i})   reverse log-rate (0 if no reverse edge)
         2: B_{i<-j}        branching probability for this jump
+        3: has_reverse      1.0 if reverse edge j<-i exists, else 0.0
 
     Notes
     -----
     We standardize the two log-rate columns *within each graph* to stabilize
-    training across networks with different absolute prefactors.
+    training across networks with different absolute prefactors.  The binary
+    ``has_reverse`` feature lets the model distinguish "no reverse edge" from
+    "very small reverse rate" after standardization shifts the sentinel 0.
     """
     K_coo = K.tocoo()
     mask = K_coo.row != K_coo.col  # off-diagonal only
@@ -234,7 +237,7 @@ def build_edge_features(
     edge_index = torch.tensor(np.vstack([cols, rows]), dtype=torch.long)
 
     n_edges = rows.size
-    edge_attr = np.zeros((n_edges, 3), dtype=np.float32)
+    edge_attr = np.zeros((n_edges, 4), dtype=np.float32)
 
     # Forward log-rate: log(K[i,j])
     edge_attr[:, 0] = np.log(np.clip(rates, 1e-300, None))
@@ -251,6 +254,9 @@ def build_edge_features(
     B_csr = B_mat.tocsr()
     b_vals = np.asarray(B_csr[rows, cols]).ravel().astype(float)
     edge_attr[:, 2] = b_vals.astype(np.float32)
+
+    # Binary indicator for reverse edge existence
+    edge_attr[:, 3] = has_reverse.astype(np.float32)
 
     # Standardize log-rate columns (0 and 1) within this graph
     for c in (0, 1):
@@ -297,6 +303,9 @@ class KTNDataset(InMemoryDataset):
         super().__init__(root, transform, pre_transform)
         self.load(self.processed_paths[0])
 
+    # Bump this when node/edge feature definitions change to invalidate cache.
+    _FEATURE_VERSION = "v2"  # v2: added has_reverse_edge binary indicator
+
     @property
     def processed_file_names(self):
         # Cache key includes build settings to avoid stale dataset reuse.
@@ -308,7 +317,8 @@ class KTNDataset(InMemoryDataset):
         def _safe(s: str) -> str:
             return "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in s)
 
-        fname = f"ktn_data_{_safe(base_tag)}_{tag}_{node_tag}_{_safe(tgt_tag)}.pt"
+        fname = (f"ktn_data_{_safe(base_tag)}_{tag}_{node_tag}"
+                 f"_{_safe(tgt_tag)}_{self._FEATURE_VERSION}.pt")
         return [fname]
 
     def process(self):
