@@ -73,8 +73,10 @@ def load_and_merge_data(
 
     df = feat_df.merge(tgt_df, on="dps_dir", how="inner", suffixes=("", "_tgt"))
 
-    # Only keep OK rows from features
-    df = df[df["status"] == "OK"].copy()
+    # Keep complete rows and partially-computed rows; exclude hard failures.
+    if "status" in df.columns:
+        status = df["status"].astype(str)
+        df = df[status.eq("OK") | status.str.startswith("PARTIAL")].copy()
 
     # Add log-transformed targets
     for new_col, (src_col, transform) in TARGET_DEFS.items():
@@ -150,15 +152,27 @@ def run_loocv(
         X_test_s = scaler.transform(X_test)
 
         model = model_class(**model_kwargs)
-        model.fit(X_train_s, y_train)
-        y_pred[test_idx] = model.predict(X_test_s)
+        try:
+            model.fit(X_train_s, y_train)
+            y_pred[test_idx] = model.predict(X_test_s)
+        except Exception:
+            # Keep this fold as NaN so one failing model/fold doesn't abort the run.
+            continue
 
     mask = np.isfinite(y_pred) & np.isfinite(y)
+    n_obs = int(mask.sum())
+    if n_obs == 0:
+        metrics = {"R2": np.nan, "RMSE": np.nan, "MAE": np.nan, "n": 0}
+        return y_pred, metrics
+
+    y_true_masked = y[mask]
+    y_pred_masked = y_pred[mask]
+    r2 = float(r2_score(y_true_masked, y_pred_masked)) if n_obs >= 2 else np.nan
     metrics = {
-        "R2": float(r2_score(y[mask], y_pred[mask])),
-        "RMSE": float(np.sqrt(mean_squared_error(y[mask], y_pred[mask]))),
-        "MAE": float(mean_absolute_error(y[mask], y_pred[mask])),
-        "n": int(mask.sum()),
+        "R2": r2,
+        "RMSE": float(np.sqrt(mean_squared_error(y_true_masked, y_pred_masked))),
+        "MAE": float(mean_absolute_error(y_true_masked, y_pred_masked)),
+        "n": n_obs,
     }
     return y_pred, metrics
 
@@ -200,7 +214,8 @@ def compare_models(
         _, metrics = run_loocv(X, y, cls, kwargs)
         metrics["model"] = name
         results.append(metrics)
-    return pd.DataFrame(results).set_index("model")
+    out = pd.DataFrame(results).set_index("model")
+    return out.sort_values("R2", ascending=False, na_position="last")
 
 
 # ======================================================================
@@ -450,7 +465,12 @@ def main():
                                args.out_dir / f"forward_selection_{target}.png")
 
         # 4) Best model predicted vs actual plot + predictions CSV
-        best_model_name = comp["R2"].idxmax()
+        valid_r2 = comp["R2"].dropna()
+        if valid_r2.empty:
+            print("  [ml_regression] Skipping best-model plot: all model R² are NaN.")
+            continue
+
+        best_model_name = valid_r2.idxmax()
         best_cls, best_kwargs = MODELS[best_model_name]
         y_pred, _ = run_loocv(X, y, best_cls, best_kwargs)
         plot_predicted_vs_actual(

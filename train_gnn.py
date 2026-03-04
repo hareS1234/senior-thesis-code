@@ -217,9 +217,10 @@ def train_node_level(
     all_true = np.concatenate(all_true)
 
     from sklearn.metrics import r2_score, mean_absolute_error
+    val_r2 = float(r2_score(all_true, all_pred)) if all_pred.size >= 2 else float("nan")
     metrics = {
         "task": task,
-        "val_r2": float(r2_score(all_true, all_pred)),
+        "val_r2": val_r2,
         "val_mae": float(mean_absolute_error(all_true, all_pred)),
         "n_val_nodes": int(all_pred.size),
         "best_val_loss": float(best_val_loss),
