@@ -423,6 +423,12 @@ def main():
         "--out-dir", type=Path, default=Path("ml_results"),
         help="Output directory for results.",
     )
+    parser.add_argument(
+        "--impute", action="store_true",
+        help="Impute missing feature values (median) instead of requiring "
+             "complete features.  Useful for maximising sample size when "
+             "some feature groups (e.g., barrier distances) are unavailable.",
+    )
     args = parser.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -443,16 +449,25 @@ def main():
         return
 
     for target in targets:
-        # Drop only rows missing the target; NaN features are handled by
-        # the SimpleImputer inside the LOO-CV pipeline.
+        # Always require a valid target value.
         df_target = df.dropna(subset=[target]).copy()
-        print(f"[ml_regression] {target}: {len(df_target)} networks (NaN features imputed).")
+
+        X = df_target[feature_cols].values.astype(float)
+        y = df_target[target].values.astype(float)
+
+        if not args.impute:
+            # Strict mode (default): require complete features per row.
+            keep = np.isfinite(y) & np.all(np.isfinite(X), axis=1)
+            df_target = df_target.loc[keep].copy()
+            X = X[keep]
+            y = y[keep]
+            print(f"[ml_regression] {target}: {len(df_target)} networks (strict, NaN rows dropped).")
+        else:
+            print(f"[ml_regression] {target}: {len(df_target)} networks (--impute, NaN features filled).")
         if len(df_target) < 10:
             print(f"  [ml_regression] Skipping {target}: too few samples.")
             continue
 
-        X = df_target[feature_cols].values.astype(float)
-        y = df_target[target].values.astype(float)
         if np.isnan(y).all():
             print(f"  [ml_regression] Skipping {target}: all NaN.")
             continue

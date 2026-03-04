@@ -2,10 +2,10 @@
 """
 graph_features.py
 
-Compute graph-theoretic features for each coarse-grained KTN at a given
-temperature.  Outputs a single CSV with one row per network and ~50
-structural features spanning distance, spectral, centrality, community,
-path, and topology categories.
+Compute graph-theoretic and sequence-derived features for each coarse-grained
+KTN at a given temperature.  Outputs a single CSV with one row per network
+and ~65 features spanning sequence composition, distance, spectral,
+centrality, community, path, and topology categories.
 
 Usage (on the cluster):
     python graph_features.py --out graph_features_coarse_T300K.csv
@@ -27,6 +27,70 @@ from scipy.stats import skew as scipy_skew
 
 from config import BASE_DIR, TEMPERATURES, MarkovFilePaths, iter_dps_dirs
 from io_markov import load_markov, load_AB_selectors, temp_tag
+
+
+# ======================================================================
+#  0. Sequence-derived features
+# ======================================================================
+
+# Kyte-Doolittle hydropathy scale (standard 20 amino acids)
+AA_HYDRO = {
+    "A": 1.8, "C": 2.5, "D": -3.5, "E": -3.5, "F": 2.8, "G": -0.4,
+    "H": -3.2, "I": 4.5, "K": -3.9, "L": 3.8, "M": 1.9, "N": -3.5,
+    "P": -1.6, "Q": -3.5, "R": -4.5, "S": -0.8, "T": -0.7, "V": 4.2,
+    "W": -0.9, "Y": -1.3,
+}
+
+
+def compute_sequence_features(seq: str) -> Dict[str, float]:
+    """
+    Compute amino-acid composition features from the peptide sequence.
+
+    These capture LLPS-relevant physicochemical properties:
+      - Arginine content (cation-pi interactions, charge patterning)
+      - Net charge and charge fractions (electrostatic driving forces)
+      - Hydropathy (Kyte-Doolittle mean, phase separation propensity)
+      - Aromatic content (pi-pi stacking interactions)
+    """
+    seq = (seq or "").strip().upper()
+    L = len(seq)
+    nan_feats = {
+        "seq_len": 0, "R_count": 0, "K_count": 0, "D_count": 0, "E_count": 0,
+        "pos_count": 0, "neg_count": 0, "net_charge": 0,
+        "frac_R": 0.0, "frac_pos": 0.0, "frac_neg": 0.0,
+        "mean_hydropathy": 0.0,
+        "aromatic_count": 0, "frac_aromatic": 0.0,
+    }
+    if L == 0:
+        return nan_feats
+
+    counts = {aa: seq.count(aa) for aa in set(seq)}
+    R = counts.get("R", 0)
+    K = counts.get("K", 0)
+    D = counts.get("D", 0)
+    E = counts.get("E", 0)
+    pos = R + K
+    neg = D + E
+
+    hydros = [AA_HYDRO.get(a, 0.0) for a in seq]
+    arom = sum(counts.get(a, 0) for a in ("F", "W", "Y"))
+
+    return {
+        "seq_len": L,
+        "R_count": R,
+        "K_count": K,
+        "D_count": D,
+        "E_count": E,
+        "pos_count": pos,
+        "neg_count": neg,
+        "net_charge": pos - neg,
+        "frac_R": R / L,
+        "frac_pos": pos / L,
+        "frac_neg": neg / L,
+        "mean_hydropathy": float(sum(hydros) / L),
+        "aromatic_count": arom,
+        "frac_aromatic": arom / L,
+    }
 
 
 # ======================================================================
@@ -176,7 +240,7 @@ def compute_spectral_features(
     k = min(n_eigs + 1, N - 1)
     if k <= 1:
         return {f"spectral_{name}": np.nan for name in [
-            "gap", "gap_ratio", "fiedler", "ramanujan_score",
+            "gap", "gap_ratio", "gap_ratio_inv", "fiedler", "ramanujan_score",
             "entropy", "effective_dimension"]}
 
     pi_safe = np.clip(np.asarray(pi, dtype=float), 1e-300, None)
@@ -211,13 +275,13 @@ def compute_spectral_features(
 
     if vals is None:
         return {f"spectral_{name}": np.nan for name in [
-            "gap", "gap_ratio", "fiedler", "ramanujan_score",
+            "gap", "gap_ratio", "gap_ratio_inv", "fiedler", "ramanujan_score",
             "entropy", "effective_dimension"]}
 
     nonzero = vals[vals < -1e-12]
     if nonzero.size == 0:
         return {f"spectral_{name}": np.nan for name in [
-            "gap", "gap_ratio", "fiedler", "ramanujan_score",
+            "gap", "gap_ratio", "gap_ratio_inv", "fiedler", "ramanujan_score",
             "entropy", "effective_dimension"]}
 
     lambda1 = nonzero[0]  # closest to 0 (least negative)
@@ -231,8 +295,12 @@ def compute_spectral_features(
         # Values near 1 → the two slowest processes have similar timescales;
         # values near 0 → the slowest process is well-separated.
         feats["spectral_gap_ratio"] = float(lambda1 / lambda2)
+        # Inverse: |λ₃|/|λ₂| = t₁/t₂  (how much slower the dominant
+        # relaxation is relative to the next fastest).
+        feats["spectral_gap_ratio_inv"] = float(lambda2 / lambda1)
     else:
         feats["spectral_gap_ratio"] = np.nan
+        feats["spectral_gap_ratio_inv"] = np.nan
 
     feats["spectral_fiedler"] = float(-lambda1)  # for CTMC, Fiedler = spectral gap
 
@@ -656,6 +724,9 @@ def extract_features_one(
                 barrier_mat = barrier_candidate
     except Exception:
         pass
+
+    # Sequence-derived features (always available from the directory name)
+    row.update(compute_sequence_features(row["sequence"]))
 
     # Compute all feature groups — guard each independently so a single
     # failure doesn't lose all features for this network.
