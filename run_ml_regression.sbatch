@@ -5,6 +5,9 @@
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=zs5958@princeton.edu
+#SBATCH --nodes=1
 
 # ---------- environment ----------
 module purge
