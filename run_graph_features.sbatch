@@ -3,8 +3,11 @@
 #SBATCH --output=logs/graph_features_%j.out
 #SBATCH --error=logs/graph_features_%j.err
 #SBATCH --time=04:00:00
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=64G
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=zs5958@princeton.edu
+#SBATCH --nodes=1
 
 # ---------- environment ----------
 module purge
