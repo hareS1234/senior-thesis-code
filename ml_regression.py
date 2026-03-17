@@ -17,7 +17,7 @@ from __future__ import annotations
 import argparse
 import warnings
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -219,13 +219,21 @@ def compare_models(
     X: np.ndarray,
     y: np.ndarray,
     feature_names: List[str],
+    model_names: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Run all models on one target via LOO-CV and return comparison table."""
+    """Run selected models on one target via LOO-CV and return comparison table."""
+    selected = model_names if model_names is not None else list(MODELS)
     results = []
-    for name, (cls, kwargs) in MODELS.items():
+    for name in selected:
+        if name not in MODELS:
+            print(f"  [ml_regression] WARNING: unknown model '{name}', skipping.")
+            continue
+        cls, kwargs = MODELS[name]
         _, metrics = run_loocv(X, y, cls, kwargs)
         metrics["model"] = name
         results.append(metrics)
+    if not results:
+        return pd.DataFrame(columns=["R2", "RMSE", "MAE", "n"])
     out = pd.DataFrame(results).set_index("model")
     return out.sort_values("R2", ascending=False, na_position="last")
 
@@ -240,6 +248,7 @@ def compute_feature_importance(
     feature_names: List[str],
     model_class=GradientBoostingRegressor,
     model_kwargs: dict = None,
+    n_repeats: int = 50,
 ) -> pd.DataFrame:
     """
     Permutation importance on the full dataset (for interpretation).
@@ -256,8 +265,14 @@ def compute_feature_importance(
     model = model_class(**model_kwargs)
     model.fit(X_s, y)
 
-    result = permutation_importance(model, X_s, y, n_repeats=50,
-                                    random_state=42, scoring="r2")
+    result = permutation_importance(
+        model,
+        X_s,
+        y,
+        n_repeats=n_repeats,
+        random_state=42,
+        scoring="r2",
+    )
     imp_df = pd.DataFrame({
         "feature": feature_names,
         "importance": result.importances_mean,
@@ -425,14 +440,35 @@ def main():
     )
     parser.add_argument(
         "--impute", action="store_true",
-        help="Impute missing feature values (median) instead of requiring "
-             "complete features.  Useful for maximising sample size when "
-             "some feature groups (e.g., barrier distances) are unavailable.",
+        help="Impute missing feature values (median) instead of requiring complete features.",
+    )
+    parser.add_argument(
+        "--targets", nargs="+", default=None,
+        help=f"Subset of targets to run. Choices: {', '.join(TARGET_DEFS.keys())}",
+    )
+    parser.add_argument(
+        "--models", nargs="+", default=list(MODELS.keys()),
+        help=f"Subset of models to compare. Choices: {', '.join(MODELS.keys())}",
+    )
+    parser.add_argument(
+        "--n-perm-repeats", type=int, default=50,
+        help="Permutation-importance repeats (default: 50). Lower this for CPU-light runs.",
+    )
+    parser.add_argument(
+        "--skip-forward-selection", action="store_true",
+        help="Skip greedy forward selection to save time.",
+    )
+    parser.add_argument(
+        "--forward-max-features", type=int, default=8,
+        help="Maximum number of features in forward selection (default: 8).",
+    )
+    parser.add_argument(
+        "--min-samples", type=int, default=10,
+        help="Minimum usable samples required to analyze a target (default: 10).",
     )
     args = parser.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load and merge
     print("[ml_regression] Loading and merging data...")
     df = load_and_merge_data(args.features_csv, args.targets_csv)
     print(f"[ml_regression] {len(df)} networks with both features and targets.")
@@ -443,20 +479,44 @@ def main():
         print("[ml_regression] No usable numeric features found. Exiting.")
         return
 
-    targets = [t for t in TARGET_DEFS if t in df.columns]
-    if not targets:
+    available_targets = [t for t in TARGET_DEFS if t in df.columns]
+    if not available_targets:
         print("[ml_regression] No target columns available after merge. Exiting.")
         return
 
+    if args.targets is None:
+        targets = available_targets
+    else:
+        targets = [t for t in args.targets if t in available_targets]
+        missing_targets = [t for t in args.targets if t not in available_targets]
+        for t in missing_targets:
+            print(f"[ml_regression] WARNING: requested target '{t}' not available after merge.")
+    if not targets:
+        print("[ml_regression] No requested targets available. Exiting.")
+        return
+
+    model_names = [m for m in args.models if m in MODELS]
+    missing_models = [m for m in args.models if m not in MODELS]
+    for m in missing_models:
+        print(f"[ml_regression] WARNING: unknown model '{m}', skipping.")
+    if not model_names:
+        print("[ml_regression] No valid models selected. Exiting.")
+        return
+
+    print(f"[ml_regression] Targets: {', '.join(targets)}")
+    print(f"[ml_regression] Models: {', '.join(model_names)}")
+    print(f"[ml_regression] Permutation repeats: {args.n_perm_repeats}")
+    print(f"[ml_regression] Forward selection: {'off' if args.skip_forward_selection else 'on'}")
+
+    summary_rows = []
+
     for target in targets:
-        # Always require a valid target value.
         df_target = df.dropna(subset=[target]).copy()
 
         X = df_target[feature_cols].values.astype(float)
         y = df_target[target].values.astype(float)
 
         if not args.impute:
-            # Strict mode (default): require complete features per row.
             keep = np.isfinite(y) & np.all(np.isfinite(X), axis=1)
             df_target = df_target.loc[keep].copy()
             X = X[keep]
@@ -464,52 +524,81 @@ def main():
             print(f"[ml_regression] {target}: {len(df_target)} networks (strict, NaN rows dropped).")
         else:
             print(f"[ml_regression] {target}: {len(df_target)} networks (--impute, NaN features filled).")
-        if len(df_target) < 10:
-            print(f"  [ml_regression] Skipping {target}: too few samples.")
-            continue
 
+        if len(df_target) < args.min_samples:
+            print(f"  [ml_regression] Skipping {target}: too few samples (< {args.min_samples}).")
+            continue
         if np.isnan(y).all():
             print(f"  [ml_regression] Skipping {target}: all NaN.")
             continue
-        labels = df_target["sequence"].tolist() if "sequence" in df_target.columns else \
-                 [str(i) for i in range(len(df_target))]
+
+        labels = df_target["sequence"].tolist() if "sequence" in df_target.columns else [str(i) for i in range(len(df_target))]
 
         print(f"\n{'='*60}")
         print(f"  Target: {target}  (N = {len(y)})")
-        print(f"{'='*60}")
+        print(f"\n{'='*60}")
 
-        # 1) Model comparison
-        comp = compare_models(X, y, feature_cols)
+        comp = compare_models(X, y, feature_cols, model_names=model_names)
+        if comp.empty:
+            print(f"  [ml_regression] No successful models for {target}.")
+            continue
         comp.to_csv(args.out_dir / f"model_comparison_{target}.csv")
         print(comp.to_string())
 
-        # 2) Feature importance
-        imp = compute_feature_importance(X, y, feature_cols)
-        imp.to_csv(args.out_dir / f"feature_importance_{target}.csv", index=False)
-        plot_feature_importance(imp, target,
-                                args.out_dir / f"feature_importance_{target}.png")
-
-        # 3) Forward selection
-        sel = forward_selection(X, y, feature_cols)
-        sel.to_csv(args.out_dir / f"forward_selection_{target}.csv", index=False)
-        plot_forward_selection(sel, target,
-                               args.out_dir / f"forward_selection_{target}.png")
-
-        # 4) Best model predicted vs actual plot + predictions CSV
         valid_r2 = comp["R2"].dropna()
         if valid_r2.empty:
-            print("  [ml_regression] Skipping best-model plot: all model R² are NaN.")
+            print("  [ml_regression] Skipping downstream analysis: all model R² are NaN.")
             continue
 
         best_model_name = valid_r2.idxmax()
         best_cls, best_kwargs = MODELS[best_model_name]
-        y_pred, _ = run_loocv(X, y, best_cls, best_kwargs)
+
+        try:
+            imp = compute_feature_importance(
+                X,
+                y,
+                feature_cols,
+                model_class=best_cls,
+                model_kwargs=best_kwargs,
+                n_repeats=args.n_perm_repeats,
+            )
+            imp.to_csv(args.out_dir / f"feature_importance_{target}.csv", index=False)
+            plot_feature_importance(
+                imp,
+                target,
+                args.out_dir / f"feature_importance_{target}.png",
+            )
+        except Exception as e:
+            print(f"  [ml_regression] Feature importance failed for {target}: {type(e).__name__}: {e}")
+
+        if not args.skip_forward_selection:
+            try:
+                sel = forward_selection(
+                    X,
+                    y,
+                    feature_cols,
+                    max_features=args.forward_max_features,
+                )
+                sel.to_csv(args.out_dir / f"forward_selection_{target}.csv", index=False)
+                if not sel.empty:
+                    plot_forward_selection(
+                        sel,
+                        target,
+                        args.out_dir / f"forward_selection_{target}.png",
+                    )
+            except Exception as e:
+                print(f"  [ml_regression] Forward selection failed for {target}: {type(e).__name__}: {e}")
+
+        y_pred, metrics = run_loocv(X, y, best_cls, best_kwargs)
         plot_predicted_vs_actual(
-            y, y_pred, labels, target, best_model_name,
+            y,
+            y_pred,
+            labels,
+            target,
+            best_model_name,
             args.out_dir / f"pred_vs_actual_{target}.png",
         )
 
-        # Save predictions CSV for notebook consumption
         pred_df = pd.DataFrame({
             "dps_dir": df_target["dps_dir"].values,
             "actual": y,
@@ -517,21 +606,23 @@ def main():
         })
         pred_df.to_csv(args.out_dir / f"predictions_{target}.csv", index=False)
 
+        summary_rows.append({
+            "target": target,
+            "n_samples": len(y),
+            "best_model": best_model_name,
+            "R2": metrics["R2"],
+            "RMSE": metrics["RMSE"],
+            "MAE": metrics["MAE"],
+            "impute": args.impute,
+        })
+        pd.DataFrame(summary_rows).to_csv(args.out_dir / "summary.csv", index=False)
+
         print(f"  Best model: {best_model_name} (R² = {comp.loc[best_model_name, 'R2']:.3f})")
 
-    # Aggregate model comparison across all targets into one CSV
-    all_comp_files = sorted(args.out_dir.glob("model_comparison_*.csv"))
-    if all_comp_files:
-        dfs = []
-        for f in all_comp_files:
-            tgt = f.stem.replace("model_comparison_", "")
-            comp_df = pd.read_csv(f, index_col=0)
-            comp_df["target"] = tgt
-            dfs.append(comp_df)
-        combined = pd.concat(dfs, ignore_index=False)
-        combined.to_csv(args.out_dir / "model_comparison.csv")
-
-    print(f"\n[ml_regression] Results saved to {args.out_dir}/")
+    if summary_rows:
+        print(f"\n[ml_regression] Wrote summary for {len(summary_rows)} targets to {args.out_dir / 'summary.csv'}")
+    else:
+        print("\n[ml_regression] No target completed successfully.")
 
 
 if __name__ == "__main__":

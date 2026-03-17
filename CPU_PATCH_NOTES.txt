@@ -1,0 +1,57 @@
+CPU-first thesis patch set
+==========================
+
+Use these default sbatch scripts now:
+  sbatch run_graph_features.sbatch
+  sbatch run_ml_regression.sbatch
+  sbatch run_gnn.sbatch
+
+Those three files were replaced with CPU-safe versions.
+The original full-study versions were backed up as:
+  run_graph_features_full.sbatch
+  run_ml_regression_full.sbatch
+  run_gnn_full.sbatch
+
+What changed
+------------
+1) graph_features.py
+   - added --lite preset
+   - added --feature-groups to choose only some groups
+   - added --skip-clustering-coeff to avoid triangle counting
+   - added --resume and --save-every so timeouts still leave a usable CSV
+   - added --max-networks for testing
+
+2) ml_regression.py
+   - added --targets to run only a subset of targets
+   - added --models to compare only selected models
+   - added --n-perm-repeats to reduce permutation-importance cost
+   - added --skip-forward-selection
+   - writes summary.csv incrementally after each completed target
+
+3) train_gnn.py
+   - added --device, --batch-size, --node-epochs, --graph-epochs
+   - added --pretrain-epochs, --finetune-epochs, --patience
+   - added optional --no-node-targets when compatible with the mode
+   - node training now has early stopping
+   - graph and multitask modes save partial predictions after each fold
+
+Recommended thesis workflow
+---------------------------
+Primary result:
+  1. run_graph_features.sbatch
+  2. run_ml_regression.sbatch
+
+Optional appendix result:
+  3. run_gnn.sbatch
+
+Current default targets/models in CPU regression script
+-------------------------------------------------------
+Targets:
+  log_MFPT_AB, log_t1
+Models:
+  OLS, Ridge_1, RidgeCV, RandomForest, GradientBoosting
+
+If you want a slightly larger CPU run later, the easiest next step is:
+  - add log_MFPT_BA to the regression targets
+  - raise --n-perm-repeats from 10 to 20
+  - turn forward selection back on for only one target

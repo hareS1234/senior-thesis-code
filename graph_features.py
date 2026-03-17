@@ -29,6 +29,10 @@ from config import BASE_DIR, TEMPERATURES, MarkovFilePaths, iter_dps_dirs
 from io_markov import load_markov, load_AB_selectors, temp_tag
 
 
+ALL_FEATURE_GROUPS = ("sequence", "distance", "spectral", "centrality", "community", "path", "topology")
+LITE_FEATURE_GROUPS = ("sequence", "distance", "spectral", "centrality", "topology")
+
+
 # ======================================================================
 #  0. Sequence-derived features
 # ======================================================================
@@ -625,7 +629,10 @@ def compute_path_features(
 #  6. Topology features
 # ======================================================================
 
-def compute_topology_features(K: csr_matrix) -> Dict[str, float]:
+def compute_topology_features(
+    K: csr_matrix,
+    include_clustering: bool = True,
+) -> Dict[str, float]:
     """Compute basic topological descriptors of the KTN."""
     feats: Dict[str, float] = {}
     N = K.shape[0]
@@ -676,18 +683,22 @@ def compute_topology_features(K: csr_matrix) -> Dict[str, float]:
     else:
         feats["largest_component_frac"] = 0.0
 
-    # Local clustering coefficient (sparse triangle counting)
-    # C_i = 2 * triangles(i) / (deg(i) * (deg(i) - 1))
-    # adj_sym is already binarized above
-    A2 = adj_sym @ adj_sym
-    # triangles(i) = (A^2 .* A)[i,i] / 2  (element-wise multiply, then diagonal)
-    A2_A = A2.multiply(adj_sym)
-    triangles = np.asarray(A2_A.sum(axis=1)).ravel() / 2.0
-    denom = degrees * (degrees - 1)
-    denom[denom == 0] = 1.0
-    clustering = 2.0 * triangles / denom
-    feats["clustering_coeff_mean"] = float(np.mean(clustering))
-    feats["clustering_coeff_std"] = float(np.std(clustering))
+    if include_clustering:
+        # Local clustering coefficient (sparse triangle counting)
+        # C_i = 2 * triangles(i) / (deg(i) * (deg(i) - 1))
+        # adj_sym is already binarized above
+        A2 = adj_sym @ adj_sym
+        # triangles(i) = (A^2 .* A)[i,i] / 2  (element-wise multiply, then diagonal)
+        A2_A = A2.multiply(adj_sym)
+        triangles = np.asarray(A2_A.sum(axis=1)).ravel() / 2.0
+        denom = degrees * (degrees - 1)
+        denom[denom == 0] = 1.0
+        clustering = 2.0 * triangles / denom
+        feats["clustering_coeff_mean"] = float(np.mean(clustering))
+        feats["clustering_coeff_std"] = float(np.std(clustering))
+    else:
+        feats["clustering_coeff_mean"] = np.nan
+        feats["clustering_coeff_std"] = np.nan
 
     return feats
 
@@ -699,8 +710,10 @@ def compute_topology_features(K: csr_matrix) -> Dict[str, float]:
 def extract_features_one(
     dps_dir: Path,
     T: float = 300.0,
+    feature_groups: tuple[str, ...] = ALL_FEATURE_GROUPS,
+    include_clustering: bool = True,
 ) -> Dict[str, Any]:
-    """Extract all graph features for one coarse-grained KTN."""
+    """Extract selected graph features for one coarse-grained KTN."""
     tag = temp_tag(T)
     row: Dict[str, Any] = {
         "dps_dir": str(dps_dir),
@@ -746,23 +759,26 @@ def extract_features_one(
     except Exception:
         pass
 
-    # Sequence-derived features (always available from the directory name)
-    row.update(compute_sequence_features(row["sequence"]))
+    print(
+        f"  [graph_features] {dps_dir.name}: N={Q.shape[0]}, "
+        f"|A|={A_sel.sum()}, |B|={B_sel.sum()}, groups={','.join(feature_groups)}"
+    )
 
-    # Compute all feature groups — guard each independently so a single
-    # failure doesn't lose all features for this network.
-    print(f"  [graph_features] {dps_dir.name}: N={Q.shape[0]}, "
-          f"|A|={A_sel.sum()}, |B|={B_sel.sum()}")
+    group_fns = {
+        "sequence": lambda: compute_sequence_features(row["sequence"]),
+        "distance": lambda: compute_distance_features(B, K, A_sel, B_sel, barrier_mat),
+        "spectral": lambda: compute_spectral_features(Q, pi),
+        "centrality": lambda: compute_centrality_features(K, pi, A_sel, B_sel),
+        "community": lambda: compute_community_features(K, pi, A_sel, B_sel),
+        "path": lambda: compute_path_features(K, A_sel, B_sel),
+        "topology": lambda: compute_topology_features(K, include_clustering=include_clustering),
+    }
 
     warnings_list = []
-    for name, fn in [
-        ("distance", lambda: compute_distance_features(B, K, A_sel, B_sel, barrier_mat)),
-        ("spectral", lambda: compute_spectral_features(Q, pi)),
-        ("centrality", lambda: compute_centrality_features(K, pi, A_sel, B_sel)),
-        ("community", lambda: compute_community_features(K, pi, A_sel, B_sel)),
-        ("path", lambda: compute_path_features(K, A_sel, B_sel)),
-        ("topology", lambda: compute_topology_features(K)),
-    ]:
+    for name in feature_groups:
+        fn = group_fns.get(name)
+        if fn is None:
+            continue
         try:
             row.update(fn())
         except Exception as e:
@@ -785,30 +801,87 @@ def main():
         "--out", type=Path, default=Path("graph_features_coarse_T300K.csv"),
         help="Output CSV path.",
     )
+    parser.add_argument(
+        "--feature-groups", nargs="+", choices=ALL_FEATURE_GROUPS,
+        default=list(ALL_FEATURE_GROUPS),
+        help="Feature groups to compute. Default: all groups.",
+    )
+    parser.add_argument(
+        "--lite", action="store_true",
+        help="CPU-light preset: sequence, distance, spectral, centrality, topology; also skips triangle-based clustering.",
+    )
+    parser.add_argument(
+        "--skip-clustering-coeff", action="store_true",
+        help="Skip triangle-based clustering coefficient inside topology features.",
+    )
+    parser.add_argument(
+        "--save-every", type=int, default=1,
+        help="Write partial CSV after every N newly processed networks (default: 1).",
+    )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume from an existing output CSV by skipping dps_dir values already present.",
+    )
+    parser.add_argument(
+        "--max-networks", type=int, default=None,
+        help="Optional cap on number of networks to process (useful for testing).",
+    )
     args = parser.parse_args()
 
-    dps_dirs = iter_dps_dirs()
-    print(f"[graph_features] Found {len(dps_dirs)} DPS directories.")
+    feature_groups = tuple(args.feature_groups)
+    if args.lite:
+        feature_groups = LITE_FEATURE_GROUPS
+        args.skip_clustering_coeff = True
 
-    rows = []
-    for i, dps_dir in enumerate(dps_dirs, 1):
-        print(f"[graph_features] ({i}/{len(dps_dirs)}) Processing {dps_dir.name}...")
+    dps_dirs = iter_dps_dirs()
+    if args.max_networks is not None:
+        dps_dirs = dps_dirs[:max(args.max_networks, 0)]
+    print(f"[graph_features] Found {len(dps_dirs)} DPS directories.")
+    print(f"[graph_features] Feature groups: {', '.join(feature_groups)}")
+    print(f"[graph_features] Triangle clustering: {'off' if args.skip_clustering_coeff else 'on'}")
+
+    rows: list[dict[str, Any]] = []
+    processed: set[str] = set()
+    if args.resume and args.out.exists():
+        existing = pd.read_csv(args.out)
+        rows = existing.to_dict("records")
+        if "dps_dir" in existing.columns:
+            processed = set(existing["dps_dir"].astype(str))
+        print(f"[graph_features] Resume mode: loaded {len(rows)} existing rows, skipping {len(processed)} already-processed networks.")
+
+    pending = [d for d in dps_dirs if str(d) not in processed]
+    print(f"[graph_features] {len(pending)} networks queued in this run.")
+
+    new_rows = 0
+    for i, dps_dir in enumerate(pending, 1):
+        print(f"[graph_features] ({i}/{len(pending)}) Processing {dps_dir.name}...")
         try:
-            row = extract_features_one(dps_dir, args.T)
+            row = extract_features_one(
+                dps_dir,
+                args.T,
+                feature_groups=feature_groups,
+                include_clustering=not args.skip_clustering_coeff,
+            )
         except Exception as e:
             row = {"dps_dir": str(dps_dir), "status": f"ERROR: {e}"}
         if row.get("status") != "OK":
             print(f"    -> {row.get('status', 'UNKNOWN')}")
         rows.append(row)
+        new_rows += 1
+
+        if args.save_every > 0 and new_rows % args.save_every == 0:
+            pd.DataFrame(rows).to_csv(args.out, index=False)
+            print(f"[graph_features] Saved partial results ({len(rows)} rows) to {args.out}")
 
     df = pd.DataFrame(rows)
     df.to_csv(args.out, index=False)
     print(f"\n[graph_features] Saved {len(df)} rows to {args.out}")
 
-    ok = df[df["status"] == "OK"]
-    partial = df[df["status"].str.startswith("PARTIAL", na=False)]
-    failed = len(df) - len(ok) - len(partial)
-    print(f"[graph_features] {len(ok)} OK, {len(partial)} partial, {failed} skipped/errored.")
+    status = df.get("status", pd.Series(dtype=str)).astype(str)
+    ok = int(status.eq("OK").sum())
+    partial = int(status.str.startswith("PARTIAL", na=False).sum())
+    failed = int(len(df) - ok - partial)
+    print(f"[graph_features] {ok} OK, {partial} partial, {failed} skipped/errored.")
 
 
 if __name__ == "__main__":

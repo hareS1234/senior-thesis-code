@@ -41,6 +41,13 @@ from gnn_models import KTNNodeModel, KTNGraphModel, KTNMultiTaskModel
 TARGET_NAMES = ["log_MFPT_coarse_AB", "log_MFPT_coarse_BA", "log_t1", "t1_over_t2"]
 
 
+def resolve_device(device: str = "auto") -> torch.device:
+    """Resolve requested device string to a torch.device."""
+    if device == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(device)
+
+
 # ======================================================================
 #  Node-level training
 # ======================================================================
@@ -56,6 +63,9 @@ def train_node_level(
     weight_decay: float = 1e-4,
     train_frac: float = 0.8,
     seed: int = 42,
+    patience: int = 30,
+    batch_size: int = 4,
+    device: str = "auto",
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
@@ -68,7 +78,7 @@ def train_node_level(
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = resolve_device(device)
 
     # Determine feature dims from first graph
     sample = dataset[0]
@@ -131,7 +141,7 @@ def train_node_level(
         print("[train_gnn] No validation nodes available after splitting. Skipping.")
         return {}
 
-    loader = DataLoader(data_list, batch_size=4, shuffle=True)
+    loader = DataLoader(data_list, batch_size=batch_size, shuffle=True)
 
     # Loss function
     if task == "committor":
@@ -142,6 +152,7 @@ def train_node_level(
     best_val_loss = float("inf")
     best_state = copy.deepcopy(model.state_dict())
     history = {"train_loss": [], "val_loss": []}
+    wait = 0
 
     for epoch in range(n_epochs):
         model.train()
@@ -189,8 +200,14 @@ def train_node_level(
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             best_state = copy.deepcopy(model.state_dict())
+            wait = 0
+        else:
+            wait += 1
+            if wait >= patience:
+                print(f"  Early stopping at epoch {epoch+1:4d} (best_val_loss={best_val_loss:.6f})")
+                break
 
-        if (epoch + 1) % 50 == 0:
+        if (epoch + 1) % 25 == 0:
             print(f"  Epoch {epoch+1:4d}  train_loss={avg_train_loss:.6f}  "
                   f"val_loss={avg_val_loss:.6f}")
 
@@ -275,6 +292,8 @@ def train_graph_level_loocv(
     weight_decay: float = 1e-4,
     patience: int = 50,
     n_seeds: int = 5,
+    batch_size: int = 4,
+    device: str = "auto",
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
@@ -302,10 +321,10 @@ def train_graph_level_loocv(
     sample = valid_data[0]
     node_dim = sample.x.shape[1]
     edge_dim = sample.edge_attr.shape[1] if sample.edge_attr is not None else 0
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = resolve_device(device)
 
     y_true = np.array([d.y[0, target_idx].item() for d in valid_data])
-    y_pred_all = np.zeros((N, n_seeds))
+    y_pred_all = np.full((N, n_seeds), np.nan)
 
     for fold_idx in range(N):
         train_data = [valid_data[i] for i in range(N) if i != fold_idx]
@@ -334,7 +353,7 @@ def train_graph_level_loocv(
             train_subset = [train_data[i] for i in train_indices]
             val_subset = [train_data[i] for i in val_indices]
 
-            train_loader = DataLoader(train_subset, batch_size=4, shuffle=True)
+            train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
             val_loader = DataLoader(val_subset, batch_size=len(val_subset))
 
             best_val = float("inf")
@@ -383,12 +402,21 @@ def train_graph_level_loocv(
             y_pred_all[fold_idx, seed] = pred
 
         # Average over seeds
-        y_pred_avg = y_pred_all[fold_idx].mean()
+        y_pred_avg = float(np.nanmean(y_pred_all[fold_idx]))
         print(f"  Fold {fold_idx+1:2d}/{N} ({seq_name:15s}): "
               f"true={y_true[fold_idx]:.4f}, pred={y_pred_avg:.4f}")
 
+        out_dir.mkdir(parents=True, exist_ok=True)
+        np.savez(
+            out_dir / f"graph_loocv_{target_name}_partial.npz",
+            y_true=y_true,
+            y_pred_partial=np.nanmean(y_pred_all, axis=1),
+            y_pred_all_seeds=y_pred_all,
+            completed_folds=fold_idx + 1,
+        )
+
     # Ensemble average predictions
-    y_pred_final = y_pred_all.mean(axis=1)
+    y_pred_final = np.nanmean(y_pred_all, axis=1)
 
     from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
     metrics = {
@@ -450,6 +478,8 @@ def train_multitask(
     weight_decay: float = 1e-4,
     patience: int = 50,
     n_seeds: int = 5,
+    batch_size: int = 4,
+    device: str = "auto",
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
@@ -480,10 +510,10 @@ def train_multitask(
     sample = valid_data[0]
     node_dim = sample.x.shape[1]
     edge_dim = sample.edge_attr.shape[1] if sample.edge_attr is not None else 0
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = resolve_device(device)
 
     y_true = np.array([d.y[0, target_idx].item() for d in valid_data])
-    y_pred_all = np.zeros((N, n_seeds))
+    y_pred_all = np.full((N, n_seeds), np.nan)
 
     if node_task == "committor":
         node_loss_fn = nn.BCELoss()
@@ -506,7 +536,7 @@ def train_multitask(
             optimizer = torch.optim.Adam(model.parameters(), lr=lr,
                                          weight_decay=weight_decay)
 
-            train_loader = DataLoader(train_data, batch_size=4, shuffle=True)
+            train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
             # Stage 1: Joint pre-training with early stopping
             best_pretrain_loss = float("inf")
@@ -598,9 +628,18 @@ def train_multitask(
         seq_name = getattr(test_data, "sequence", f"graph_{fold_idx}")
         print(f"  Fold {fold_idx+1:2d}/{N} ({seq_name:15s}): "
               f"true={y_true[fold_idx]:.4f}, "
-              f"pred={y_pred_all[fold_idx].mean():.4f}")
+              f"pred={np.nanmean(y_pred_all[fold_idx]):.4f}")
 
-    y_pred_final = y_pred_all.mean(axis=1)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        np.savez(
+            out_dir / f"multitask_{target_name}_partial.npz",
+            y_true=y_true,
+            y_pred_partial=np.nanmean(y_pred_all, axis=1),
+            y_pred_all_seeds=y_pred_all,
+            completed_folds=fold_idx + 1,
+        )
+
+    y_pred_final = np.nanmean(y_pred_all, axis=1)
 
     from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
     metrics = {
@@ -645,8 +684,25 @@ def main():
     parser.add_argument("--conv-type", type=str, default="nnconv",
                         choices=["nnconv", "gat", "gcn", "gin"])
     parser.add_argument("--n-seeds", type=int, default=5)
+    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--node-epochs", type=int, default=200)
+    parser.add_argument("--graph-epochs", type=int, default=300)
+    parser.add_argument("--pretrain-epochs", type=int, default=100)
+    parser.add_argument("--finetune-epochs", type=int, default=200)
+    parser.add_argument("--patience", type=int, default=50)
+    parser.add_argument("--device", type=str, default="auto",
+                        choices=["auto", "cpu", "cuda"],
+                        help="Device selection. Default: auto.")
+    parser.add_argument("--no-node-targets", action="store_true",
+                        help="Skip committor/MFPT preprocessing when compatible with the selected mode.")
     parser.add_argument("--out-dir", type=Path, default=Path("gnn_results"))
     args = parser.parse_args()
+
+    need_node_targets = args.mode in ("node", "all", "multitask")
+    compute_node_targets = not args.no_node_targets
+    if need_node_targets and args.no_node_targets:
+        print("[train_gnn] WARNING: selected mode needs node targets; ignoring --no-node-targets.")
+        compute_node_targets = True
 
     from config import BASE_DIR
     print("[train_gnn] Loading dataset...")
@@ -655,8 +711,10 @@ def main():
         base_dir=BASE_DIR,
         T=300.0,
         targets_csv=args.targets_csv,
+        compute_node_targets=compute_node_targets,
     )
     print(f"[train_gnn] {len(dataset)} graphs loaded.")
+    print(f"[train_gnn] Device: {resolve_device(args.device)}")
 
     if args.mode in ("node", "all"):
         print("\n" + "=" * 60)
@@ -665,7 +723,9 @@ def main():
         train_node_level(
             dataset, task=args.task,
             hidden_dim=args.hidden_dim, n_layers=args.n_layers,
-            conv_type=args.conv_type, out_dir=args.out_dir,
+            conv_type=args.conv_type, n_epochs=args.node_epochs,
+            patience=args.patience, batch_size=args.batch_size,
+            device=args.device, out_dir=args.out_dir,
         )
 
     if args.mode in ("graph", "all"):
@@ -678,7 +738,9 @@ def main():
             train_graph_level_loocv(
                 dataset, target_idx=t_idx,
                 hidden_dim=args.hidden_dim, n_layers=args.n_layers,
-                conv_type=args.conv_type, n_seeds=args.n_seeds,
+                conv_type=args.conv_type, n_epochs=args.graph_epochs,
+                patience=args.patience, n_seeds=args.n_seeds,
+                batch_size=args.batch_size, device=args.device,
                 out_dir=args.out_dir,
             )
 
@@ -690,7 +752,11 @@ def main():
             train_multitask(
                 dataset, target_idx=t_idx, node_task=args.task,
                 hidden_dim=args.hidden_dim, n_layers=args.n_layers,
-                conv_type=args.conv_type, n_seeds=args.n_seeds,
+                conv_type=args.conv_type,
+                pretrain_epochs=args.pretrain_epochs,
+                finetune_epochs=args.finetune_epochs,
+                patience=args.patience, n_seeds=args.n_seeds,
+                batch_size=args.batch_size, device=args.device,
                 out_dir=args.out_dir,
             )
 
