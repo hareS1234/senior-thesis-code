@@ -2,9 +2,9 @@
 #SBATCH --job-name=graph_feat_cpu
 #SBATCH --output=logs/graph_feat_cpu_%j.out
 #SBATCH --error=logs/graph_feat_cpu_%j.err
-#SBATCH --time=04:00:00
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=24G
+#SBATCH --time=150:00:00
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=zs5958@princeton.edu
 #SBATCH --nodes=1
