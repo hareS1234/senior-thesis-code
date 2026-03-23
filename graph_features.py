@@ -826,6 +826,11 @@ def main():
         "--max-networks", type=int, default=None,
         help="Optional cap on number of networks to process (useful for testing).",
     )
+    parser.add_argument(
+        "--sequences", nargs="+", default=None,
+        help="Only process networks whose sequence directory matches one of these names "
+             "(e.g. --sequences aaaaaa eeeeee). Default: all sequences.",
+    )
     args = parser.parse_args()
 
     feature_groups = tuple(args.feature_groups)
@@ -834,6 +839,9 @@ def main():
         args.skip_clustering_coeff = True
 
     dps_dirs = iter_dps_dirs()
+    if args.sequences is not None:
+        seq_set = {s.rstrip("_nocap") for s in args.sequences}
+        dps_dirs = [d for d in dps_dirs if d.parent.name.replace("_nocap", "") in seq_set]
     if args.max_networks is not None:
         dps_dirs = dps_dirs[:max(args.max_networks, 0)]
     print(f"[graph_features] Found {len(dps_dirs)} DPS directories.")
