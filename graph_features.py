@@ -840,8 +840,8 @@ def main():
 
     dps_dirs = iter_dps_dirs()
     if args.sequences is not None:
-        seq_set = {s.rstrip("_nocap") for s in args.sequences}
-        dps_dirs = [d for d in dps_dirs if d.parent.name.replace("_nocap", "") in seq_set]
+        seq_set = {s.removesuffix("_nocap") for s in args.sequences}
+        dps_dirs = [d for d in dps_dirs if d.parent.name.removesuffix("_nocap") in seq_set]
     if args.max_networks is not None:
         dps_dirs = dps_dirs[:max(args.max_networks, 0)]
     print(f"[graph_features] Found {len(dps_dirs)} DPS directories.")
