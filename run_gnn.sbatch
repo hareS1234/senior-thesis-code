@@ -2,7 +2,7 @@
 #SBATCH --job-name=gnn_cpu_small
 #SBATCH --output=logs/gnn_cpu_small_%j.out
 #SBATCH --error=logs/gnn_cpu_small_%j.err
-#SBATCH --time=04:00:00
+#SBATCH --time=180:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 #SBATCH --mail-type=END,FAIL

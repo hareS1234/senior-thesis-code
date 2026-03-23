@@ -2,7 +2,7 @@
 #SBATCH --job-name=ml_reg_cpu
 #SBATCH --output=logs/ml_reg_cpu_%j.out
 #SBATCH --error=logs/ml_reg_cpu_%j.err
-#SBATCH --time=02:00:00
+#SBATCH --time=180:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --mail-type=END,FAIL
