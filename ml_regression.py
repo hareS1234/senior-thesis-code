@@ -69,11 +69,18 @@ def load_and_merge_data(
     feat_df = pd.read_csv(features_csv)
     tgt_df = pd.read_csv(targets_csv)
 
-    # Normalize dps_dir for joining
+    # Normalize dps_dir for joining — features CSV may use full paths while
+    # targets CSV may use bare directory names.  Extract the basename so both
+    # sides match.
     feat_df["dps_dir"] = feat_df["dps_dir"].astype(str).str.rstrip("/")
     tgt_df["dps_dir"] = tgt_df["dps_dir"].astype(str).str.rstrip("/")
 
-    df = feat_df.merge(tgt_df, on="dps_dir", how="inner", suffixes=("", "_tgt"))
+    # Create a join key from the basename of dps_dir
+    feat_df["_join_key"] = feat_df["dps_dir"].apply(lambda p: Path(p).name)
+    tgt_df["_join_key"] = tgt_df["dps_dir"].apply(lambda p: Path(p).name)
+
+    df = feat_df.merge(tgt_df, on="_join_key", how="inner", suffixes=("", "_tgt"))
+    df.drop(columns=["_join_key", "dps_dir_tgt"], inplace=True, errors="ignore")
 
     # Keep rows where features were at least partially extracted.
     # "OK" means all feature groups succeeded; "PARTIAL(...)" means some
