@@ -4,7 +4,7 @@
 #SBATCH --error=logs/gnn_cpu_small_%j.err
 #SBATCH --time=180:00:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=24G
+#SBATCH --mem=64G
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=zs5958@princeton.edu
 #SBATCH --nodes=1
@@ -35,7 +35,7 @@ python train_gnn.py \
   --hidden-dim 32 \
   --n-layers 2 \
   --conv-type gcn \
-  --batch-size 2 \
+  --batch-size 1 \
   --node-epochs 60 \
   --patience 15 \
   --device cpu \
