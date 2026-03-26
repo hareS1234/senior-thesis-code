@@ -32,9 +32,7 @@ python ml_regression.py \
   --targets-csv GTcheck_micro_vs_coarse_T300K_full.csv \
   --out-dir ml_results_cpu \
   --impute \
-  --targets log_MFPT_AB log_t1 \
-  --models OLS Ridge_1 RidgeCV RandomForest GradientBoosting \
-  --n-perm-repeats 10 \
-  --skip-forward-selection
+  --targets log_MFPT_AB log_MFPT_BA log_t1 t1_over_t2 \
+  --n-perm-repeats 50
 
 echo "End: $(date)"
