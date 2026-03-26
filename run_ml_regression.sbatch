@@ -33,6 +33,6 @@ python ml_regression.py \
   --out-dir ml_results_cpu \
   --impute \
   --targets log_MFPT_AB log_MFPT_BA log_t1 t1_over_t2 \
-  --n-perm-repeats 50
+  --n-perm-repeats 100
 
 echo "End: $(date)"
