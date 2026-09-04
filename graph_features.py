@@ -1,14 +1,7 @@
 #!/usr/bin/env python
-"""
-graph_features.py
+"""Calculate the sequence and graph features used by the ML scripts.
 
-Compute graph-theoretic and sequence-derived features for each coarse-grained
-KTN at a given temperature.  Outputs a single CSV with one row per network
-and ~65 features spanning sequence composition, distance, spectral,
-centrality, community, path, and topology categories.
-
-Usage (on the cluster):
-    python graph_features.py --out graph_features_coarse_T300K.csv
+The output is one CSV row per coarse KTN.
 """
 
 from __future__ import annotations
@@ -33,11 +26,11 @@ ALL_FEATURE_GROUPS = ("sequence", "distance", "spectral", "centrality", "communi
 LITE_FEATURE_GROUPS = ("sequence", "distance", "spectral", "centrality", "topology")
 
 
-# ======================================================================
-#  0. Sequence-derived features
-# ======================================================================
 
-# Kyte-Doolittle hydropathy scale (standard 20 amino acids)
+
+
+
+
 AA_HYDRO = {
     "A": 1.8, "C": 2.5, "D": -3.5, "E": -3.5, "F": 2.8, "G": -0.4,
     "H": -3.2, "I": 4.5, "K": -3.9, "L": 3.8, "M": 1.9, "N": -3.5,
@@ -47,15 +40,7 @@ AA_HYDRO = {
 
 
 def compute_sequence_features(seq: str) -> Dict[str, float]:
-    """
-    Compute amino-acid composition features from the peptide sequence.
-
-    These capture LLPS-relevant physicochemical properties:
-      - Arginine content (cation-pi interactions, charge patterning)
-      - Net charge and charge fractions (electrostatic driving forces)
-      - Hydropathy (Kyte-Doolittle mean, phase separation propensity)
-      - Aromatic content (pi-pi stacking interactions)
-    """
+    """Get the composition, charge, hydropathy, and aromatic fractions."""
     seq = (seq or "").strip().upper()
     L = len(seq)
     nan_feats = {
@@ -97,29 +82,19 @@ def compute_sequence_features(seq: str) -> Dict[str, float]:
     }
 
 
-# ======================================================================
-#  1. Distance features
-# ======================================================================
+
+
+
 
 def _branching_length_matrix(B: csr_matrix) -> csr_matrix:
-    """Build a sparse *adjacency/length* matrix for Dijkstra on the branching graph.
+    """Turn branching probabilities into ``-log(B)`` path lengths.
 
-    Conventions
-    ----------
-    The branching matrix uses the same convention as the rates:
-        B[i, j] = P(jump to i | leaving j) = B_{i <- j}
-
-    SciPy's `shortest_path` expects an adjacency matrix A where A[src, dst] is
-    the edge weight from `src` to `dst`. Therefore we must *transpose* the
-    (i <- j) storage convention:
-
-        L[src=j, dst=i] = -log(B[i, j])
-
-    This yields non-negative edge weights suitable for Dijkstra's algorithm.
+    B stores ``i <- j`` while SciPy wants ``source -> target``, so the result
+    is transposed.
     """
     B_coo = B.tocoo()
     mask = B_coo.data > 0
-    # Stored as (dst=i, src=j) -> convert to adjacency (src=j, dst=i)
+
     src = B_coo.col[mask]
     dst = B_coo.row[mask]
     data = -np.log(np.clip(B_coo.data[mask], 1e-300, None))
@@ -127,34 +102,19 @@ def _branching_length_matrix(B: csr_matrix) -> csr_matrix:
 
 
 def _rate_length_matrix(K: csr_matrix, min_rate: float = 1e-300) -> csr_matrix:
-    """Build a sparse *adjacency/length* matrix for shortest paths on the rate graph.
+    """Turn rates into path lengths, again flipping ``i <- j`` to ``j -> i``.
 
-    Conventions
-    ----------
-    K[i, j] = k_{i <- j} is the rate *into i from j* (so columns are sources).
-
-    For a directed edge j -> i, we want the adjacency entry:
-        L[src=j, dst=i] = -log(k_{i <- j}) = -log(K[i, j])
-
-    Non-negativity
-    --------------
-    Dijkstra's algorithm (used internally by SciPy when possible) requires
-    non-negative edge weights. In principle, rates can exceed 1 in the chosen
-    units, which would make -log(k) negative and can create negative cycles.
-
-    To make this descriptor robust, we *shift* the edge lengths so that the
-    minimum edge length is 0 whenever needed. This is equivalent to normalizing
-    rates by the maximum observed rate in the graph, and leaves the ordering of
-    edges by "fastness" intact.
+    If ``-log(k)`` goes negative, shift every edge so Dijkstra still works. The
+    shift keeps the rate ordering the same.
     """
     K_coo = K.tocoo()
     mask = (K_coo.row != K_coo.col) & (K_coo.data > min_rate)
-    # Stored as (dst=i, src=j) -> adjacency (src=j, dst=i)
+
     src = K_coo.col[mask]
     dst = K_coo.row[mask]
     data = -np.log(np.clip(K_coo.data[mask], min_rate, None))
 
-    # Shift to non-negative if needed (safety guard)
+
     if data.size and np.min(data) < 0:
         data = data - np.min(data)
 
@@ -168,19 +128,12 @@ def compute_distance_features(
     B_sel: np.ndarray,
     barrier_mat: Optional[csr_matrix] = None,
 ) -> Dict[str, float]:
-    """
-    Compute A<->B distance features from branching, rate, and barrier matrices.
-
-    Three distance types:
-      - branch_dist_*: edge weight = -log(B_ij), branching probabilities
-      - rate_dist_*:   edge weight = -log(K_ij), transition rates
-      - barrier_dist_*: edge weight = barrier height (if available)
-    """
+    """Get A/B distances from branching, rate, and barrier edge lengths."""
     feats: Dict[str, float] = {}
     A_idx = np.where(A_sel)[0]
     B_idx_dist = np.where(B_sel)[0]
 
-    # --- Branching-probability distances (directed, -log B) ---
+
     L_branch = _branching_length_matrix(B)
     dist_from_A = shortest_path(L_branch, directed=True, indices=A_idx)
     ab_dists = dist_from_A[:, B_idx_dist]
@@ -199,7 +152,7 @@ def compute_distance_features(
     else:
         feats["branch_dist_asymmetry"] = np.nan
 
-    # --- Rate-based distances (directed, -log K) ---
+
     L_rate = _rate_length_matrix(K)
     rdist_from_A = shortest_path(L_rate, directed=True, indices=A_idx)
     rab = rdist_from_A[:, B_idx_dist]
@@ -218,7 +171,7 @@ def compute_distance_features(
     else:
         feats["rate_dist_asymmetry"] = np.nan
 
-    # --- Barrier-based distances (undirected) ---
+
     if barrier_mat is not None:
         barrier = barrier_mat.tocsr()
         barrier = 0.5 * (barrier + barrier.T)
@@ -239,21 +192,16 @@ def compute_distance_features(
     return feats
 
 
-# ======================================================================
-#  2. Spectral features
-# ======================================================================
+
+
+
 
 def compute_spectral_features(
     Q: csr_matrix,
     pi: np.ndarray,
     n_eigs: int = 10,
 ) -> Dict[str, float]:
-    """
-    Compute spectral properties of the CTMC generator.
-
-    Uses the symmetric similarity transform S^{1/2} Q^T S^{-1/2}
-    (same approach as mfpt_analysis.py).
-    """
+    """Get the slow CTMC modes with the same transform as ``mfpt_analysis``."""
     feats: Dict[str, float] = {}
     N = Q.shape[0]
     k = min(n_eigs + 1, N - 1)
@@ -269,10 +217,10 @@ def compute_spectral_features(
     Sinv = diags(inv_sqrt_pi)
     L_sym = S @ Q.T @ Sinv
 
-    # Always symmetrize: eigsh requires a symmetric operator, and for
-    # detailed-balance CTMCs the similarity transform should be symmetric.
-    # Warn if the asymmetry is large (indicates numerical issues or
-    # departure from detailed balance).
+
+
+
+
     try:
         from scipy.sparse.linalg import norm as spnorm
         asym = spnorm(L_sym - L_sym.T, ord=1) / max(spnorm(L_sym, ord=1), 1e-300)
@@ -308,27 +256,27 @@ def compute_spectral_features(
             "gap", "gap_ratio", "gap_ratio_inv", "fiedler", "ramanujan_score",
             "entropy", "effective_dimension"]}
 
-    lambda1 = nonzero[0]  # closest to 0 (least negative)
-    feats["spectral_gap"] = float(-lambda1)  # positive
+    lambda1 = nonzero[0]
+    feats["spectral_gap"] = float(-lambda1)
 
     if nonzero.size >= 2:
         lambda2 = nonzero[1]
-        # Ratio of the two smallest-magnitude non-zero eigenvalues:
-        #   lambda1/lambda2 = |λ₂|/|λ₃| = t₂/t₁
-        # where t_k = -1/λ_k are the relaxation times (λ₁=0 is trivial).
-        # Values near 1 → the two slowest processes have similar timescales;
-        # values near 0 → the slowest process is well-separated.
+
+
+
+
+
         feats["spectral_gap_ratio"] = float(lambda1 / lambda2)
-        # Inverse: |λ₃|/|λ₂| = t₁/t₂  (how much slower the dominant
-        # relaxation is relative to the next fastest).
+
+
         feats["spectral_gap_ratio_inv"] = float(lambda2 / lambda1)
     else:
         feats["spectral_gap_ratio"] = np.nan
         feats["spectral_gap_ratio_inv"] = np.nan
 
-    feats["spectral_fiedler"] = float(-lambda1)  # for CTMC, Fiedler = spectral gap
+    feats["spectral_fiedler"] = float(-lambda1)
 
-    # Ramanujan score: spectral_gap / (2*sqrt(d-1)) where d = mean degree
+
     K_binary = (Q.copy() != 0).astype(float)
     K_binary.setdiag(0)
     K_binary.eliminate_zeros()
@@ -336,7 +284,7 @@ def compute_spectral_features(
     d_eff = max(mean_deg, 2.0)
     feats["spectral_ramanujan_score"] = feats["spectral_gap"] / (2.0 * np.sqrt(d_eff - 1))
 
-    # Spectral entropy over magnitude of eigenvalues
+
     magnitudes = np.abs(nonzero[:min(n_eigs, nonzero.size)])
     p = magnitudes / magnitudes.sum()
     entropy = -np.sum(p * np.log(p + 1e-300))
@@ -346,18 +294,18 @@ def compute_spectral_features(
     return feats
 
 
-# ======================================================================
-#  3. Centrality features
-# ======================================================================
+
+
+
 
 def _sparse_pagerank(K: csr_matrix, alpha: float = 0.85, tol: float = 1e-8,
                      max_iter: int = 200) -> np.ndarray:
-    """Power iteration PageRank on the rate matrix (column-stochastic)."""
+    """Run PageRank directly on the sparse rate matrix."""
     N = K.shape[0]
-    # Normalize columns to get transition matrix
+
     col_sums = np.asarray(K.sum(axis=0)).ravel()
     col_sums[col_sums == 0] = 1.0
-    T_mat = K.multiply(1.0 / col_sums)  # column-stochastic
+    T_mat = K.multiply(1.0 / col_sums)
 
     pr = np.ones(N) / N
     for _ in range(max_iter):
@@ -375,30 +323,25 @@ def compute_centrality_features(
     A_sel: np.ndarray,
     B_sel: np.ndarray,
 ) -> Dict[str, float]:
-    """
-    Compute centrality of A and B states in the network.
-
-    Includes PageRank, stationary probability, eigenvector centrality,
-    and a closeness-like score on the undirected connectivity graph.
-    """
+    """Summarize PageRank, stationary weight, and closeness for A and B."""
     feats: Dict[str, float] = {}
     N = K.shape[0]
 
-    # Stationary probability of A/B
+
     feats["pi_A"] = float(pi[A_sel].sum())
     feats["pi_B"] = float(pi[B_sel].sum())
     feats["pi_ratio_AB"] = feats["pi_A"] / max(feats["pi_B"], 1e-300)
 
-    # PageRank
+
     pr = _sparse_pagerank(K)
     feats["pagerank_A"] = float(pr[A_sel].sum())
     feats["pagerank_B"] = float(pr[B_sel].sum())
 
-    # Eigenvector centrality from dominant eigenvector of adjacency
+
     try:
-        # Use the symmetrized adjacency for eigenvector centrality
+
         adj = K.copy()
-        adj.data[:] = 1.0  # binary adjacency
+        adj.data[:] = 1.0
         adj_sym = 0.5 * (adj + adj.T)
         vals, vecs = eigsh(adj_sym.astype(float), k=1, which="LM")
         ev = np.abs(vecs[:, 0])
@@ -409,13 +352,13 @@ def compute_centrality_features(
         feats["eigvec_centrality_A"] = np.nan
         feats["eigvec_centrality_B"] = np.nan
 
-    # Closeness-like centrality for A/B nodes.
-    # We only need scores for A/B, so compute shortest paths from those nodes.
+
+
     A_idx = np.where(A_sel)[0]
     B_idx_cent = np.where(B_sel)[0]
     query_idx = np.union1d(A_idx, B_idx_cent)
 
-    # Use unweighted shortest paths on the symmetrized connectivity graph.
+
     adj_binary = (K != 0).astype(float)
     adj_sym_binary = ((adj_binary + adj_binary.T) > 0).astype(float)
 
@@ -439,9 +382,9 @@ def compute_centrality_features(
     return feats
 
 
-# ======================================================================
-#  4. Community / metastability features
-# ======================================================================
+
+
+
 
 def compute_community_features(
     K: csr_matrix,
@@ -450,20 +393,17 @@ def compute_community_features(
     B_sel: np.ndarray,
     max_clusters: int = 10,
 ) -> Dict[str, float]:
-    """
-    Detect metastable communities using spectral clustering on the
-    symmetrized rate matrix.
-    """
+    """Find metastable groups from the symmetrized rate matrix."""
     feats: Dict[str, float] = {}
     N = K.shape[0]
 
-    # Build symmetrized affinity matrix from rates
+
     K_sym = 0.5 * (K + K.T)
-    K_sym.data = np.abs(K_sym.data)  # ensure non-negative
+    K_sym.data = np.abs(K_sym.data)
     deg = np.asarray(K_sym.sum(axis=1)).ravel()
     deg[deg == 0] = 1.0
 
-    # Determine number of clusters from eigengap heuristic
+
     n_try = min(max_clusters + 1, N - 1, 15)
     if n_try < 2:
         feats["n_communities"] = 1
@@ -474,17 +414,17 @@ def compute_community_features(
         return feats
 
     try:
-        # Graph Laplacian eigenvalues for eigengap
+
         D_inv_sqrt = diags(1.0 / np.sqrt(deg))
         L_norm = diags(np.ones(N)) - D_inv_sqrt @ K_sym @ D_inv_sqrt
 
         eig_vals, eig_vecs = eigsh(L_norm, k=n_try, which="SM", tol=1e-8)
         eig_vals = np.sort(np.real(eig_vals))
 
-        # Eigengap: largest jump after first eigenvalue (~0)
-        gaps = np.diff(eig_vals[1:])  # skip the first ~0 eigenvalue
+
+        gaps = np.diff(eig_vals[1:])
         if gaps.size > 0:
-            n_clusters = int(np.argmax(gaps) + 2)  # +2 because we skipped first and argmax is 0-indexed
+            n_clusters = int(np.argmax(gaps) + 2)
             n_clusters = max(2, min(n_clusters, max_clusters))
         else:
             n_clusters = 2
@@ -492,7 +432,7 @@ def compute_community_features(
         n_clusters = 2
         eig_vecs = None
 
-    # Do spectral clustering
+
     try:
         from sklearn.cluster import SpectralClustering
         sc = SpectralClustering(
@@ -501,11 +441,11 @@ def compute_community_features(
             assign_labels="kmeans",
             random_state=42,
         )
-        # SpectralClustering needs dense affinity for precomputed
+
         if N <= 5000:
             labels = sc.fit_predict(K_sym.toarray())
         else:
-            # For large networks, use our own spectral embedding + KMeans
+
             from sklearn.cluster import KMeans
             if eig_vecs is not None and eig_vecs.shape[1] >= n_clusters:
                 embedding = eig_vecs[:, :n_clusters]
@@ -528,7 +468,7 @@ def compute_community_features(
     n_actual = len(set(labels))
     feats["n_communities"] = n_actual
 
-    # Modularity
+
     m = K_sym.sum() / 2.0
     if m > 0:
         Q_mod = 0.0
@@ -543,12 +483,12 @@ def compute_community_features(
     else:
         feats["modularity"] = 0.0
 
-    # A and B in same community?
+
     A_communities = set(labels[A_sel])
     B_communities = set(labels[B_sel])
     feats["AB_same_community"] = int(len(A_communities & B_communities) > 0)
 
-    # Community size entropy
+
     sizes = np.bincount(labels).astype(float)
     sizes = sizes[sizes > 0]
     p_sizes = sizes / sizes.sum()
@@ -559,18 +499,16 @@ def compute_community_features(
     return feats
 
 
-# ======================================================================
-#  5. Path features
-# ======================================================================
+
+
+
 
 def compute_path_features(
     K: csr_matrix,
     A_sel: np.ndarray,
     B_sel: np.ndarray,
 ) -> Dict[str, float]:
-    """
-    Analyze shortest paths between A and B on the rate graph.
-    """
+    """Summarize the shortest A/B paths on the rate graph."""
     feats: Dict[str, float] = {}
     A_idx = np.where(A_sel)[0]
     B_idx = np.where(B_sel)[0]
@@ -586,7 +524,7 @@ def compute_path_features(
         feats.update(nan_feats)
         return feats
 
-    # Hop-count shortest paths (unweighted)
+
     adj = ((K != 0) + (K.T != 0)).astype(float)
     adj.data[:] = 1.0
     dist = shortest_path(adj, directed=False, indices=A_idx)
@@ -600,12 +538,12 @@ def compute_path_features(
     min_hops = float(np.min(finite_hops))
     feats["shortest_path_hops_AB"] = min_hops
 
-    # Count node-disjoint short paths (within 2x shortest) as a proxy for redundancy
-    # Use the single representative A and B nodes (first of each)
+
+
     a_rep = A_idx[0]
     b_rep = B_idx[0]
 
-    # Rate-weighted shortest path length
+
     L = _rate_length_matrix(K)
     try:
         d_single = shortest_path(L, directed=True, indices=np.array([a_rep]))
@@ -613,49 +551,49 @@ def compute_path_features(
     except Exception:
         feats["rate_shortest_path_AB"] = np.nan
 
-    # Count of A-B pairs reachable within 2× the shortest hop distance
-    # (proxy for path redundancy, not a count of distinct paths)
+
+
     threshold = min_hops * 2
     n_short = int(np.sum(finite_hops <= threshold))
     feats["n_short_pairs_AB"] = n_short
 
-    # Path redundancy ratio
+
     feats["path_redundancy"] = n_short / max(A_idx.size * B_idx.size, 1)
 
     return feats
 
 
-# ======================================================================
-#  6. Topology features
-# ======================================================================
+
+
+
 
 def compute_topology_features(
     K: csr_matrix,
     include_clustering: bool = True,
 ) -> Dict[str, float]:
-    """Compute basic topological descriptors of the KTN."""
+    """Grab the basic KTN size and connectivity numbers."""
     feats: Dict[str, float] = {}
     N = K.shape[0]
     feats["n_nodes"] = N
 
-    # Directed edges (nonzeros in K, excluding diagonal)
+
     K_coo = K.tocoo()
     off_diag_mask = K_coo.row != K_coo.col
     n_directed_edges = int(off_diag_mask.sum())
     feats["n_edges_directed"] = n_directed_edges
 
-    # Undirected edges (binarized: 1 if edge exists in either direction)
+
     adj_sym = ((K != 0) + (K.T != 0)).astype(float)
     adj_sym.setdiag(0)
     adj_sym.eliminate_zeros()
-    # Binarize so mutual edges count as 1, not 2
+
     adj_sym = (adj_sym > 0).astype(float)
     n_undirected = adj_sym.nnz // 2
     feats["n_edges_undirected"] = n_undirected
 
     feats["density"] = n_undirected / max(N * (N - 1) / 2, 1)
 
-    # Degree statistics (undirected, from binarized adjacency)
+
     degrees = np.asarray(adj_sym.sum(axis=1)).ravel()
     feats["degree_mean"] = float(np.mean(degrees))
     feats["degree_std"] = float(np.std(degrees))
@@ -666,7 +604,7 @@ def compute_topology_features(
     else:
         feats["degree_skew"] = 0.0
 
-    # Degree assortativity (Pearson correlation of degrees at edge endpoints)
+
     adj_coo = adj_sym.tocoo()
     src_deg = degrees[adj_coo.row]
     dst_deg = degrees[adj_coo.col]
@@ -675,7 +613,7 @@ def compute_topology_features(
     else:
         feats["degree_assortativity"] = 0.0
 
-    # Connected components
+
     n_comp, comp_labels = connected_components(adj_sym, directed=False)
     feats["n_components"] = n_comp
     if N > 0:
@@ -684,11 +622,11 @@ def compute_topology_features(
         feats["largest_component_frac"] = 0.0
 
     if include_clustering:
-        # Local clustering coefficient (sparse triangle counting)
-        # C_i = 2 * triangles(i) / (deg(i) * (deg(i) - 1))
-        # adj_sym is already binarized above
+
+
+
         A2 = adj_sym @ adj_sym
-        # triangles(i) = (A^2 .* A)[i,i] / 2  (element-wise multiply, then diagonal)
+
         A2_A = A2.multiply(adj_sym)
         triangles = np.asarray(A2_A.sum(axis=1)).ravel() / 2.0
         denom = degrees * (degrees - 1)
@@ -703,9 +641,9 @@ def compute_topology_features(
     return feats
 
 
-# ======================================================================
-#  Main: extract features for all networks
-# ======================================================================
+
+
+
 
 def extract_features_one(
     dps_dir: Path,
@@ -713,7 +651,7 @@ def extract_features_one(
     feature_groups: tuple[str, ...] = ALL_FEATURE_GROUPS,
     include_clustering: bool = True,
 ) -> Dict[str, Any]:
-    """Extract selected graph features for one coarse-grained KTN."""
+    """Collect the requested feature groups for one coarse KTN."""
     tag = temp_tag(T)
     row: Dict[str, Any] = {
         "dps_dir": str(dps_dir),
@@ -722,21 +660,21 @@ def extract_features_one(
         "variant": dps_dir.name.split("_")[1] if "_" in dps_dir.name else "",
     }
 
-    # Check if coarse model exists
+
     markov_dir = dps_dir / f"markov_{tag}"
     coarse_dir = markov_dir / f"GT_kept_{tag}"
     if not coarse_dir.exists():
         row["status"] = "MISSING_COARSE"
         return row
 
-    # Load coarse model
+
     try:
         B, K, Q, tau, pi = load_markov(dps_dir, T, coarse=True)
     except Exception as e:
         row["status"] = f"LOAD_ERROR: {e}"
         return row
 
-    # Load A/B selectors
+
     A_sel, B_sel = load_AB_selectors(dps_dir, T, coarse=True)
     if A_sel is None or B_sel is None:
         row["status"] = "MISSING_AB"
@@ -746,14 +684,14 @@ def extract_features_one(
         row["status"] = "EMPTY_AB"
         return row
 
-    # Try loading barrier matrix (may not exist for coarse model)
+
     barrier_mat = None
     mp = MarkovFilePaths(dps_dir, T)
     try:
         if mp.barrier_matrix_path.exists():
             from scipy.sparse import load_npz
             barrier_candidate = load_npz(mp.barrier_matrix_path)
-            # Barrier matrix is often microscopic; use only when aligned to coarse indexing.
+
             if barrier_candidate.shape == B.shape:
                 barrier_mat = barrier_candidate
     except Exception:

@@ -1,16 +1,5 @@
 #!/usr/bin/env python
-"""
-ml_regression.py
-
-Classical ML regression: test whether hand-crafted graph features predict
-kinetic observables (MFPTs, relaxation times).
-
-Usage:
-    python ml_regression.py \
-        --features-csv graph_features_coarse_T300K.csv \
-        --targets-csv  GTcheck_micro_vs_coarse_T300K_full.csv \
-        --out-dir      ml_results
-"""
+"""Test how well the hand-built graph features predict the kinetic targets."""
 
 from __future__ import annotations
 
@@ -52,45 +41,40 @@ TARGET_DEFS = {
 }
 
 
-# ======================================================================
-#  Data loading
-# ======================================================================
+
+
+
 
 def load_and_merge_data(
     features_csv: Path,
     targets_csv: Path,
 ) -> pd.DataFrame:
-    """
-    Merge graph features with kinetic targets.
-
-    Joins on dps_dir.  Adds log-transformed targets.
-    Filters to rows where both features and targets are valid.
-    """
+    """Join features and targets on ``dps_dir`` and add the log targets."""
     feat_df = pd.read_csv(features_csv)
     tgt_df = pd.read_csv(targets_csv)
 
-    # Normalize dps_dir for joining — features CSV may use full paths while
-    # targets CSV may use bare directory names.  Extract the basename so both
-    # sides match.
+
+
+
     feat_df["dps_dir"] = feat_df["dps_dir"].astype(str).str.rstrip("/")
     tgt_df["dps_dir"] = tgt_df["dps_dir"].astype(str).str.rstrip("/")
 
-    # Create a join key from the basename of dps_dir
+
     feat_df["_join_key"] = feat_df["dps_dir"].apply(lambda p: Path(p).name)
     tgt_df["_join_key"] = tgt_df["dps_dir"].apply(lambda p: Path(p).name)
 
     df = feat_df.merge(tgt_df, on="_join_key", how="inner", suffixes=("", "_tgt"))
     df.drop(columns=["_join_key", "dps_dir_tgt"], inplace=True, errors="ignore")
 
-    # Keep rows where features were at least partially extracted.
-    # "OK" means all feature groups succeeded; "PARTIAL(...)" means some
-    # groups failed but others have valid values.  The imputer in the
-    # LOO-CV pipeline handles the resulting NaNs.
+
+
+
+
     if "status" in df.columns:
         status = df["status"].astype(str)
         df = df[status.eq("OK") | status.str.startswith("PARTIAL")].copy()
 
-    # Add log-transformed targets
+
     for new_col, (src_col, transform) in TARGET_DEFS.items():
         if src_col in df.columns:
             vals = pd.to_numeric(df[src_col], errors="coerce")
@@ -106,9 +90,9 @@ def load_and_merge_data(
 
 
 def get_feature_cols(df: pd.DataFrame) -> List[str]:
-    """Identify numeric feature columns (exclude metadata and targets)."""
+    """Pick the numeric inputs, leaving out metadata and targets."""
     exclude = set(METADATA_COLS) | set(TARGET_DEFS.keys())
-    # Also exclude target source columns and identifiers
+
     exclude.update(TARGET_DEFS[k][0] for k in TARGET_DEFS)
     exclude.update([
         "GT_valid", "ab_ok", "mfpt_ok", "connectivity_ok", "signs_ok",
@@ -119,8 +103,8 @@ def get_feature_cols(df: pd.DataFrame) -> List[str]:
     for col in df.columns:
         if col in exclude:
             continue
-        # Exclude derived log columns, eigenvalue columns, timescale columns,
-        # and other target-adjacent columns from the GTcheck CSV
+
+
         if col.startswith("log_") or col.startswith("lambda"):
             continue
         if col in ("t1", "t2", "t3", "t4", "t5", "t1_over_t2",
@@ -131,15 +115,15 @@ def get_feature_cols(df: pd.DataFrame) -> List[str]:
                    "relerr_AB", "relerr_BA", "log10_ratio_AB", "log10_ratio_BA"):
             continue
         if is_numeric_dtype(df[col]):
-            # Check it's not all NaN
+
             if df[col].notna().sum() > df.shape[0] * 0.5:
                 candidates.append(col)
     return candidates
 
 
-# ======================================================================
-#  LOO-CV
-# ======================================================================
+
+
+
 
 def run_loocv(
     X: np.ndarray,
@@ -147,15 +131,7 @@ def run_loocv(
     model_class,
     model_kwargs: dict,
 ) -> Tuple[np.ndarray, Dict[str, float]]:
-    """
-    Leave-one-out CV with per-fold imputation and standardization.
-
-    Each fold fits its own SimpleImputer (median) → StandardScaler → model
-    pipeline to prevent data leakage while preserving samples that have
-    partial NaN features (e.g., missing barrier distances).
-
-    Returns predictions and metrics dict.
-    """
+    """Run LOO-CV with imputation and scaling fitted inside each fold."""
     loo = LeaveOneOut()
     y_pred = np.full_like(y, np.nan)
 
@@ -175,7 +151,7 @@ def run_loocv(
             model.fit(X_train_s, y_train)
             y_pred[test_idx] = model.predict(X_test_s)
         except Exception:
-            # Keep this fold as NaN so one failing model/fold doesn't abort the run.
+
             continue
 
     mask = np.isfinite(y_pred) & np.isfinite(y)
@@ -196,9 +172,9 @@ def run_loocv(
     return y_pred, metrics
 
 
-# ======================================================================
-#  Model comparison
-# ======================================================================
+
+
+
 
 MODELS = {
     "OLS": (LinearRegression, {}),
@@ -228,7 +204,7 @@ def compare_models(
     feature_names: List[str],
     model_names: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Run selected models on one target via LOO-CV and return comparison table."""
+    """Compare the selected models on one target."""
     selected = model_names if model_names is not None else list(MODELS)
     results = []
     for name in selected:
@@ -245,9 +221,9 @@ def compare_models(
     return out.sort_values("R2", ascending=False, na_position="last")
 
 
-# ======================================================================
-#  Feature importance
-# ======================================================================
+
+
+
 
 def compute_feature_importance(
     X: np.ndarray,
@@ -257,9 +233,7 @@ def compute_feature_importance(
     model_kwargs: dict = None,
     n_repeats: int = 50,
 ) -> pd.DataFrame:
-    """
-    Permutation importance on the full dataset (for interpretation).
-    """
+    """Fit once on the full set and get permutation importance."""
     if model_kwargs is None:
         model_kwargs = {"n_estimators": 100, "max_depth": 4, "random_state": 42}
 
@@ -288,9 +262,9 @@ def compute_feature_importance(
     return imp_df
 
 
-# ======================================================================
-#  Forward stepwise selection
-# ======================================================================
+
+
+
 
 def forward_selection(
     X: np.ndarray,
@@ -300,9 +274,7 @@ def forward_selection(
     model_class=Ridge,
     model_kwargs: dict = None,
 ) -> pd.DataFrame:
-    """
-    Greedy forward feature selection using LOO-CV R² as criterion.
-    """
+    """Add features greedily using LOO R²."""
     if model_kwargs is None:
         model_kwargs = {"alpha": 1.0}
 
@@ -334,16 +306,16 @@ def forward_selection(
             "features_so_far": ", ".join(feature_names[i] for i in selected),
         })
 
-        # Stop if R² is decreasing
+
         if step > 0 and best_r2 < history[-2]["R2"] - 0.01:
             break
 
     return pd.DataFrame(history)
 
 
-# ======================================================================
-#  Plotting
-# ======================================================================
+
+
+
 
 def plot_predicted_vs_actual(
     y_true: np.ndarray,
@@ -353,7 +325,7 @@ def plot_predicted_vs_actual(
     model_name: str,
     out_path: Path,
 ):
-    """Predicted vs actual scatter with identity line and labels."""
+    """Plot predictions against the real values."""
     fig, ax = plt.subplots(1, 1, figsize=(7, 6))
     mask = np.isfinite(y_true) & np.isfinite(y_pred)
     yt, yp = y_true[mask], y_pred[mask]
@@ -361,7 +333,7 @@ def plot_predicted_vs_actual(
 
     ax.scatter(yt, yp, s=40, alpha=0.7, edgecolors="k", linewidths=0.5)
 
-    # Label points
+
     for i, (x, y) in enumerate(zip(yt, yp)):
         idx = np.where(mask)[0][i]
         ax.annotate(labels[idx], (x, y), fontsize=6, alpha=0.6,
@@ -390,7 +362,7 @@ def plot_feature_importance(
     out_path: Path,
     top_n: int = 15,
 ):
-    """Horizontal bar chart of top feature importances."""
+    """Plot the strongest permutation scores."""
     df = imp_df.head(top_n).iloc[::-1]
     fig, ax = plt.subplots(1, 1, figsize=(8, 0.4 * len(df) + 1.5))
     ax.barh(df["feature"], df["importance"],
@@ -407,7 +379,7 @@ def plot_forward_selection(
     target_name: str,
     out_path: Path,
 ):
-    """R² vs number of features plot."""
+    """Plot R² as the selected feature set grows."""
     fig, ax = plt.subplots(1, 1, figsize=(7, 4.5))
     ax.plot(sel_df["step"], sel_df["R2"], "o-", color="steelblue",
             markersize=8, linewidth=2)
@@ -424,9 +396,9 @@ def plot_forward_selection(
     plt.close(fig)
 
 
-# ======================================================================
-#  Main
-# ======================================================================
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(

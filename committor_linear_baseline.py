@@ -1,29 +1,8 @@
 #!/usr/bin/env python
-"""
-committor_linear_baseline.py
+"""Linear committor baselines using node features only.
 
-Non-GNN baselines for committor prediction on node features alone
-(no message passing).
-
-Purpose: establish whether the GNN's R² ≈ 0.077 comes from message passing
-or from the node features themselves.  If linear regression also gives
-R² ≈ 0.07, the node features carry the signal and message passing adds nothing.
-If linear gives R² ≈ 0.0 but GAT gives 0.077, then message passing contributes
-real (albeit small) value.
-
-Uses the same KTNDataset, train/val split, and evaluation as train_gnn_v2.py,
-but replaces the GNN with sklearn models applied independently per node.
-
-Outputs
--------
-  {out_dir}/linear_baseline_summary.csv   — R², MAE per model
-  {out_dir}/baseline_val_predictions.csv  — validation predictions per model
-  {out_dir}/fig_committor_baselines.pdf   — pred vs true scatter per model
-
-Usage:
-    python committor_linear_baseline.py \
-        --targets-csv GTcheck_micro_vs_coarse_T300K_full.csv \
-        --out-dir     linear_baseline_results
+This checks whether the GNN gets much from message passing or mostly leans on
+the input features.
 """
 
 from __future__ import annotations
@@ -52,9 +31,9 @@ from ktn_dataset import KTNDataset
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-# ======================================================================
-#  Baseline models
-# ======================================================================
+
+
+
 
 BASELINES = {
     "LinearRegression": (LinearRegression, {}),
@@ -75,13 +54,7 @@ BASELINES = {
 
 
 def load_gnn_reference(results_dir: Path) -> list[dict]:
-    """
-    Load GNN reference metrics from metrics_*.json files if present.
-
-    This avoids hard-coding thesis numbers in the baseline script.  If the
-    directory is absent or empty, return an empty list and let the non-GNN
-    baselines stand on their own.
-    """
+    """Grab any saved GNN metrics; an empty directory is fine."""
     if not results_dir.exists():
         return []
 
@@ -115,9 +88,9 @@ def load_gnn_reference(results_dir: Path) -> list[dict]:
     return refs
 
 
-# ======================================================================
-#  Extract node features and targets with same split as GNN
-# ======================================================================
+
+
+
 
 def extract_node_data(
     dataset,
@@ -125,12 +98,7 @@ def extract_node_data(
     train_frac: float = 0.8,
     seed: int = 42,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Extract (X_train, y_train, X_val, y_val) pooled across all graphs,
-    using the exact same interior-node train/val split as train_gnn_v2.py.
-
-    Returns numpy arrays ready for sklearn.
-    """
+    """Pool the same interior-node split used by ``train_gnn_v2.py``."""
     target_attr = "committor" if task == "committor" else "mfpt_to_B"
 
     X_train_list, y_train_list = [], []
@@ -140,8 +108,8 @@ def extract_node_data(
         if not hasattr(data, target_attr) or getattr(data, target_attr) is None:
             continue
 
-        x_np = data.x.numpy()  # [N, D_node]
-        target_np = getattr(data, target_attr).numpy()  # [N]
+        x_np = data.x.numpy()
+        target_np = getattr(data, target_attr).numpy()
         N = x_np.shape[0]
 
         A_mask = data.A_mask.numpy() if hasattr(data, "A_mask") else np.zeros(N, dtype=bool)
@@ -150,7 +118,7 @@ def extract_node_data(
         interior = ~(A_mask | B_mask)
         interior_idx = np.where(interior)[0]
 
-        # Same RNG seeding as train_gnn_v2.py
+
         rng = np.random.default_rng(seed + 1009 * graph_idx)
         rng.shuffle(interior_idx)
 
@@ -182,9 +150,9 @@ def extract_node_data(
     return X_train, y_train, X_val, y_val
 
 
-# ======================================================================
-#  Main
-# ======================================================================
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -209,7 +177,7 @@ def main():
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Load same dataset as GNN ───────────────────────────────────────
+
     from config import BASE_DIR
     print("[baseline] Loading KTN dataset...")
     dataset = KTNDataset(
@@ -221,7 +189,7 @@ def main():
     )
     print(f"[baseline] {len(dataset)} graphs loaded.")
 
-    # ── Extract pooled node features with same split ───────────────────
+
     print("[baseline] Extracting node features and targets...")
     X_train, y_train, X_val, y_val = extract_node_data(
         dataset, task=args.task, train_frac=0.8, seed=args.seed,
@@ -230,16 +198,16 @@ def main():
           f"Val: {X_val.shape[0]:,} nodes, "
           f"Features: {X_train.shape[1]}")
 
-    # ── Standardize ────────────────────────────────────────────────────
+
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_val_s = scaler.transform(X_val)
 
-    # ── Run all baselines ──────────────────────────────────────────────
+
     results = []
     prediction_table = pd.DataFrame({"y_true": y_val})
 
-    # Also add constant-prediction baseline (predict mean of train)
+
     y_mean_pred = np.full_like(y_val, y_train.mean())
     r2_mean = r2_score(y_val, y_mean_pred)
     mae_mean = mean_absolute_error(y_val, y_mean_pred)
@@ -265,14 +233,14 @@ def main():
             model.fit(X_train_s, y_train)
             y_pred = model.predict(X_val_s)
 
-            # Clip committor predictions to [0, 1]
+
             if args.task == "committor":
                 y_pred = np.clip(y_pred, 0.0, 1.0)
 
             val_r2 = r2_score(y_val, y_pred)
             val_mae = mean_absolute_error(y_val, y_pred)
 
-            # Count parameters
+
             if hasattr(model, "coef_"):
                 n_params = model.coef_.size + (model.intercept_.size
                                                if hasattr(model.intercept_, "size")
@@ -309,20 +277,20 @@ def main():
                 "n_params": "N/A",
             })
 
-    # ── Add GNN results for direct comparison when available ───────────
+
     gnn_reference = load_gnn_reference(args.gnn_results_dir)
     results.extend(gnn_reference)
 
-    # ── Save summary ───────────────────────────────────────────────────
+
     results_df = pd.DataFrame(results)
     results_df.to_csv(args.out_dir / "linear_baseline_summary.csv", index=False)
     prediction_table.to_csv(args.out_dir / "baseline_val_predictions.csv", index=False)
 
-    # Also save as JSON for easy LaTeX consumption
+
     with open(args.out_dir / "linear_baseline_summary.json", "w") as f:
         json.dump(results, f, indent=2, default=str)
 
-    # ── Scatter plots ──────────────────────────────────────────────────
+
     baseline_rows = (
         results_df[results_df["family"] == "Node-feature baseline"]
         .sort_values("val_R2", ascending=False, na_position="last")
@@ -341,7 +309,7 @@ def main():
             y_pred = all_val_preds[name]
             r2 = r2_score(y_val, y_pred)
 
-            # Subsample for visibility (35k points is too dense)
+
             rng = np.random.default_rng(42)
             if len(y_val) > args.scatter_subsample:
                 idx = rng.choice(len(y_val), size=args.scatter_subsample, replace=False)
@@ -380,7 +348,7 @@ def main():
                     dpi=300, bbox_inches="tight")
         plt.close(fig)
 
-    # ── Print comparison table ─────────────────────────────────────────
+
     print(f"\n{'='*70}")
     print("  COMMITTOR PREDICTION: BASELINES vs GNNs")
     print(f"{'='*70}")

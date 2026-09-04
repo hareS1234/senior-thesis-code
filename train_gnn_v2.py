@@ -1,17 +1,8 @@
 #!/usr/bin/env python
-"""
-train_gnn_v2.py
+"""The lighter CPU training path for the node-level GNN.
 
-Improved GNN node-level training with three enhancements over v1:
-    1. Graph sparsification: keep only top-k edges per node by rate
-    2. Rate-enriched node features: inject edge-weight statistics into nodes
-    3. Automatic comparison of conv types (GCN, GAT, NNConv)
-
-Designed for CPU-only training on dense KTN graphs.
-
-Usage:
-    python train_gnn_v2.py --top-k 20 --task committor
-    python train_gnn_v2.py --top-k 20 --conv-types gcn gat nnconv
+Adds top-k sparsification and rate summaries, then compares GCN, GAT, and
+NNConv with the same split.
 """
 
 from __future__ import annotations
@@ -38,39 +29,30 @@ from ktn_dataset import KTNDataset
 from gnn_models import KTNNodeModel
 
 
-# ======================================================================
-#  Enhancement 1: Graph sparsification
-# ======================================================================
+
+
+
 
 def sparsify_graph(data: Data, top_k: int = 20) -> Data:
-    """
-    Keep only the top-k strongest edges per node (by forward log-rate).
-
-    For each node j, keep the top_k outgoing edges with highest transition
-    rate. This preserves the kinetically dominant pathways while drastically
-    reducing density.
-
-    Also keeps all reverse edges of retained edges to maintain symmetry
-    information.
-    """
-    edge_index = data.edge_index  # [2, E], (source, target)
-    edge_attr = data.edge_attr    # [E, D_edge]
+    """Keep each node's top-k outgoing rates plus their reverse edges."""
+    edge_index = data.edge_index
+    edge_attr = data.edge_attr
     N = data.x.shape[0]
     E = edge_index.shape[1]
 
     if E == 0 or top_k <= 0:
         return data
 
-    src = edge_index[0].numpy()  # source nodes
-    tgt = edge_index[1].numpy()  # target nodes
+    src = edge_index[0].numpy()
+    tgt = edge_index[1].numpy()
 
-    # Use raw forward log-rate (col 0) for ranking.
-    # Even after standardization, relative ordering is preserved.
+
+
     rates = edge_attr[:, 0].numpy()
 
     keep_mask = np.zeros(E, dtype=bool)
 
-    # For each source node, keep its top-k outgoing edges
+
     for j in range(N):
         out_mask = src == j
         out_idx = np.where(out_mask)[0]
@@ -80,19 +62,19 @@ def sparsify_graph(data: Data, top_k: int = 20) -> Data:
             top_idx = out_idx[np.argsort(rates[out_idx])[-top_k:]]
             keep_mask[top_idx] = True
 
-    # Also keep reverse edges of all retained edges to preserve symmetry info
-    # Build a set of (src, tgt) pairs that are kept
+
+
     kept_pairs = set()
     kept_idx = np.where(keep_mask)[0]
     for idx in kept_idx:
         kept_pairs.add((src[idx], tgt[idx]))
 
-    # Add reverse edges
+
     for idx in range(E):
         if not keep_mask[idx] and (tgt[idx], src[idx]) in kept_pairs:
             keep_mask[idx] = True
 
-    # Apply mask
+
     new_data = data.clone()
     new_data.edge_index = edge_index[:, keep_mask]
     new_data.edge_attr = edge_attr[keep_mask]
@@ -100,31 +82,21 @@ def sparsify_graph(data: Data, top_k: int = 20) -> Data:
     return new_data
 
 
-# ======================================================================
-#  Enhancement 2: Rate-enriched node features
-# ======================================================================
+
+
+
 
 def enrich_node_features(data: Data) -> Data:
-    """
-    Add rate-derived statistics to each node's feature vector.
+    """Append in/out rate summaries, branching mass, and normalized degree.
 
-    New features per node (appended to existing 9 features):
-        9:  mean outgoing log-rate
-        10: max outgoing log-rate
-        11: mean incoming log-rate
-        12: max incoming log-rate
-        13: total branching probability (sum of outgoing B_ij)
-        14: degree (number of edges, normalized by graph size)
-
-    This gives GCN access to rate information through node features,
-    even though GCN cannot use edge attributes directly.
+    This gives GCN some rate information even though it ignores edge features.
     """
-    x = data.x  # [N, D_node]
-    edge_index = data.edge_index  # [2, E]
-    edge_attr = data.edge_attr  # [E, D_edge]
+    x = data.x
+    edge_index = data.edge_index
+    edge_attr = data.edge_attr
     N = x.shape[0]
 
-    # Initialize new features
+
     new_feats = torch.zeros(N, 6, dtype=torch.float32)
 
     if edge_index.shape[1] == 0:
@@ -132,13 +104,13 @@ def enrich_node_features(data: Data) -> Data:
         data.x = torch.cat([x, new_feats], dim=1)
         return data
 
-    src = edge_index[0]  # source nodes
-    tgt = edge_index[1]  # target nodes
-    fwd_log_rate = edge_attr[:, 0]  # col 0: forward log-rate
-    branching = edge_attr[:, 2]     # col 2: branching probability
+    src = edge_index[0]
+    tgt = edge_index[1]
+    fwd_log_rate = edge_attr[:, 0]
+    branching = edge_attr[:, 2]
 
     for j in range(N):
-        # Outgoing edges from node j
+
         out_mask = src == j
         if out_mask.any():
             out_rates = fwd_log_rate[out_mask]
@@ -146,14 +118,14 @@ def enrich_node_features(data: Data) -> Data:
             new_feats[j, 1] = out_rates.max()
             new_feats[j, 4] = branching[out_mask].sum()
 
-        # Incoming edges to node j
+
         in_mask = tgt == j
         if in_mask.any():
             in_rates = fwd_log_rate[in_mask]
             new_feats[j, 2] = in_rates.mean()
             new_feats[j, 3] = in_rates.max()
 
-        # Normalized degree
+
         new_feats[j, 5] = float(out_mask.sum() + in_mask.sum()) / max(N, 1)
 
     data = data.clone()
@@ -161,9 +133,9 @@ def enrich_node_features(data: Data) -> Data:
     return data
 
 
-# ======================================================================
-#  Training loop
-# ======================================================================
+
+
+
 
 def train_single_config(
     data_list: list,
@@ -183,7 +155,7 @@ def train_single_config(
     config_name: str,
     out_dir: Path,
 ) -> Dict:
-    """Train a single node-level model configuration and return metrics."""
+    """Train one node-model setup and return its metrics."""
 
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -192,7 +164,7 @@ def train_single_config(
     node_dim = sample.x.shape[1]
     edge_dim = sample.edge_attr.shape[1] if sample.edge_attr is not None else 0
 
-    # For GCN/GIN, edge_dim is not used but we still pass 0
+
     model = KTNNodeModel(
         node_dim=node_dim, edge_dim=edge_dim, hidden_dim=hidden_dim,
         n_layers=n_layers, conv_type=conv_type, task=task,
@@ -207,7 +179,7 @@ def train_single_config(
         optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5,
     )
 
-    # Build train/val masks
+
     target_attr = "committor" if task == "committor" else "mfpt_to_B"
     ready_list = []
     for graph_idx, data in enumerate(data_list):
@@ -311,7 +283,7 @@ def train_single_config(
             print(f"  [{config_name}] Epoch {epoch+1:4d}  "
                   f"train={avg_train:.6f}  val={avg_val:.6f}")
 
-    # Final evaluation
+
     model.load_state_dict(best_state)
     model.eval()
     all_pred, all_true = [], []
@@ -349,13 +321,13 @@ def train_single_config(
 
     print(f"  [{config_name}] R² = {val_r2:.4f}, MAE = {val_mae:.6f}")
 
-    # Save model and metrics
+
     out_dir.mkdir(parents=True, exist_ok=True)
     torch.save(best_state, out_dir / f"model_{config_name}.pt")
     with open(out_dir / f"metrics_{config_name}.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
-    # Plot
+
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     axes[0].plot(history["train_loss"], label="Train")
@@ -380,9 +352,9 @@ def train_single_config(
     return metrics
 
 
-# ======================================================================
-#  Main: systematic comparison
-# ======================================================================
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -408,7 +380,7 @@ def main():
 
     device = torch.device(args.device)
 
-    # Load dataset
+
     from config import BASE_DIR
     print("[gnn_v2] Loading dataset...")
     dataset = KTNDataset(
@@ -420,10 +392,10 @@ def main():
     )
     print(f"[gnn_v2] {len(dataset)} graphs loaded.")
 
-    # Prepare data variants
+
     raw_list = list(dataset)
 
-    # Step 1: Sparsify if requested
+
     if args.top_k > 0:
         print(f"\n[gnn_v2] Sparsifying to top-{args.top_k} edges per node...")
         sparse_list = []
@@ -438,20 +410,20 @@ def main():
     else:
         sparse_list = raw_list
 
-    # Step 2: Create enriched-feature version
+
     print(f"\n[gnn_v2] Enriching node features with rate statistics...")
     enriched_list = [enrich_node_features(d) for d in sparse_list]
 
     print(f"[gnn_v2] Node features: {raw_list[0].x.shape[1]} (original) -> "
           f"{enriched_list[0].x.shape[1]} (enriched)")
 
-    # Step 3: Run experiments
+
     all_results = []
 
     for conv_type in args.conv_types:
-        # Decide which data variant to use:
-        # - GCN/GIN: use enriched features (they can't use edge attrs)
-        # - GAT/NNConv: use sparse data (they use edge attrs directly)
+
+
+
         if conv_type in ("gcn", "gin"):
             data = enriched_list
             suffix = f"{conv_type}_enriched_k{args.top_k}"
@@ -484,7 +456,7 @@ def main():
         if metrics:
             all_results.append(metrics)
 
-    # Summary comparison
+
     if all_results:
         print(f"\n{'='*60}")
         print(f"  COMPARISON SUMMARY ({args.task})")
@@ -492,18 +464,18 @@ def main():
         print(f"  {'Config':<35s} {'R²':>8s} {'MAE':>10s} {'Params':>10s}")
         print(f"  {'-'*35} {'-'*8} {'-'*10} {'-'*10}")
 
-        # Sort by R² descending
+
         all_results.sort(key=lambda m: m.get("val_r2", -999), reverse=True)
         for m in all_results:
             print(f"  {m['config']:<35s} {m['val_r2']:>8.4f} "
                   f"{m['val_mae']:>10.6f} {m['n_params']:>10,}")
 
-        # Save summary
+
         args.out_dir.mkdir(parents=True, exist_ok=True)
         with open(args.out_dir / "comparison_summary.json", "w") as f:
             json.dump(all_results, f, indent=2)
 
-        # Comparison bar plot
+
         fig, ax = plt.subplots(figsize=(10, 5))
         names = [m["config"] for m in all_results]
         r2s = [m["val_r2"] for m in all_results]

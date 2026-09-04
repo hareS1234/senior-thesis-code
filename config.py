@@ -3,16 +3,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-# Root directory with sequence folders like aaaaaa_nocap, aaggaa_nocap, ...
+
 BASE_DIR = Path("/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped")
 
 SEQUENCE_GLOB = "*_nocap"
 DPS_GLOB = "*_nocap"
 
-# Subdirectory where Markov model lives
-MARKOV_SUBDIR_TEMPLATE = "markov_{temp_tag}"   # e.g. markov_T300K
 
-# Temperatures you actually analyse
+MARKOV_SUBDIR_TEMPLATE = "markov_{temp_tag}"
+
+
 TEMPERATURES: List[float] = [300.0]
 
 N_EIGS: int = 20
@@ -22,7 +22,7 @@ RNG_SEED: int = 1234
 
 @dataclass
 class MarkovFilePaths:
-    base_dir: Path  # DPS dir
+    base_dir: Path
     T: float
 
     @property
@@ -33,7 +33,7 @@ class MarkovFilePaths:
     def markov_dir(self) -> Path:
         return self.base_dir / MARKOV_SUBDIR_TEMPLATE.format(temp_tag=self.temp_tag)
 
-    # microscopic matrices
+
     @property
     def B_path(self) -> Path:
         return self.markov_dir / f"B_{self.temp_tag}.npz"
@@ -84,15 +84,7 @@ class MarkovFilePaths:
 
 
 def iter_dps_dirs(base_dir: Path | None = None) -> list[Path]:
-    """Return sorted DPS directories under `base_dir` (defaults to `BASE_DIR`).
-
-    Directory structure expected:
-        base_dir/
-            <sequence>_nocap/
-                <dps>_nocap/
-                    min.data
-                    ts.data
-    """
+    """Find DPS folders under ``base_dir`` that have both data files."""
     root = base_dir if base_dir is not None else BASE_DIR
 
     dps_dirs: list[Path] = []

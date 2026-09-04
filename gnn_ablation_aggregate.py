@@ -1,20 +1,7 @@
 #!/usr/bin/env python
-"""
-gnn_ablation_aggregate.py
+"""Collect the GNN ablation runs and plot the comparison.
 
-Collect all per-config JSON files from the GNN ablation sweep into a
-single summary CSV and generate a heatmap of R² vs hyperparameters.
-
-Run this AFTER all SLURM array tasks from run_gnn_ablation.sbatch complete.
-
-Outputs
--------
-  {out_dir}/gnn_ablation_summary.csv           — full results table
-  {out_dir}/fig_gnn_ablation_heatmap.pdf       — heatmaps: R² by (k, h, L)
-  {out_dir}/fig_gnn_ablation_best_vs_worst.pdf — bar chart of top and bottom configs
-
-Usage:
-    python gnn_ablation_aggregate.py --results-dir gnn_ablation_results
+Run this after the SLURM array finishes.
 """
 
 from __future__ import annotations
@@ -42,7 +29,7 @@ def main():
     out_dir = args.out_dir or args.results_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Collect JSON files ─────────────────────────────────────────────
+
     json_files = sorted(args.results_dir.glob("metrics_gat_*.json"))
     print(f"[aggregate] Found {len(json_files)} result files.")
 
@@ -85,7 +72,7 @@ def main():
     cols_present = [c for c in cols_show if c in df.columns]
     print(df[cols_present].to_string(index=False))
 
-    # Best and worst
+
     best = df.iloc[0]
     worst = df.iloc[-1]
     print(f"\n  BEST:  {best['config']}  R²={best['val_r2']:.4f}")
@@ -94,19 +81,19 @@ def main():
     with open(out_dir / "gnn_ablation_best_config.json", "w") as f:
         json.dump(best.to_dict(), f, indent=2, default=str)
 
-    # ── Heatmaps ───────────────────────────────────────────────────────
+
     if {"top_k", "hidden_dim", "n_layers", "val_r2"}.issubset(df.columns):
-        # 1. Heatmap: top_k × hidden_dim (averaged over n_layers)
+
         pivot_kh = df.pivot_table(
             values="val_r2", index="top_k", columns="hidden_dim",
             aggfunc="mean",
         )
-        # 2. Heatmap: top_k × n_layers (averaged over hidden_dim)
+
         pivot_kl = df.pivot_table(
             values="val_r2", index="top_k", columns="n_layers",
             aggfunc="mean",
         )
-        # 3. Heatmap: hidden_dim × n_layers (averaged over top_k)
+
         pivot_hl = df.pivot_table(
             values="val_r2", index="hidden_dim", columns="n_layers",
             aggfunc="mean",
@@ -131,7 +118,7 @@ def main():
             ax.set_ylabel(ylabel, fontsize=11)
             ax.set_title(title, fontsize=11)
 
-            # Annotate cells
+
             for i in range(len(pivot.index)):
                 for j in range(len(pivot.columns)):
                     val = pivot.values[i, j]
@@ -150,7 +137,7 @@ def main():
         plt.close(fig)
         print(f"\n[aggregate] Heatmap saved.")
 
-    # ── Top vs bottom configuration summary plot ──────────────────────
+
     top_n = min(5, len(df))
     bottom_n = min(5, len(df))
     plot_df = pd.concat([df.head(top_n), df.tail(bottom_n)], axis=0).copy()
@@ -175,7 +162,7 @@ def main():
                 dpi=300, bbox_inches="tight")
     plt.close(fig)
 
-    # ── Key finding for thesis ─────────────────────────────────────────
+
     max_r2 = df["val_r2"].max()
     print(f"\n{'='*70}")
     print(f"  KEY FINDING FOR THESIS")

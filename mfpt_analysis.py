@@ -1,45 +1,8 @@
 #!/usr/bin/env python
-"""
-mfpt_analysis.py
+"""Compute slow modes and A/B passage times with PyGT.
 
-Compute MFPTs / phenomenological rates between A and B for either
-the microscopic KTN or the NGT coarse–grained model, using PyGT.
-
-We assume you have, for each DPS directory and temperature T (e.g. T=300 K):
-
-Microscopic model:
-  markov_T{T}K/
-      B_T{T}K.npz                  # branching probabilities (sparse)
-      Q_T{T}K.npz                  # CTMC generator (sparse, rows sum to 0)
-      tau_T{T}K.npy                # waiting times tau_j
-      pi_T{T}K.npy                 # stationary distribution pi_j
-      orig_min_ids_T{T}K.npy       # or original_min_ids_T{T}K.npy (original PATHSAMPLE IDs)
-
-Coarse NGT model (GT_kept):
-  markov_T{T}K/GT_kept_T{T}K/
-      B_eff_T{T}K.npz              # effective branching probabilities
-      Q_eff_T{T}K.npz              # effective CTMC generator
-      tau_eff_T{T}K.npy            # effective waiting times
-      pi_eff_T{T}K.npy             # effective stationary distribution
-      orig_min_ids_eff_T{T}K.npy   # or original_min_ids_eff_T{T}K.npy
-
-AB selectors (from PATHSAMPLE):
-  min.A                            # text file of original minimum IDs in A
-  min.B                            # text file of original minimum IDs in B
-
-Outputs, per T and per model:
-
-Microscopic:
-  markov_T{T}K/
-      eigenvalues_T{T}K.npy
-      timescales_T{T}K.npy
-      AB_kinetics_T{T}K.npz        # MFPTs and (if applicable) phenomenological rates
-
-Coarse:
-  markov_T{T}K/GT_kept_T{T}K/
-      eigenvalues_T{T}K.npy
-      timescales_T{T}K.npy
-      AB_kinetics_T{T}K.npz
+Works with either the microscopic model or its ``GT_kept`` version and saves
+the arrays next to that model.
 """
 
 from __future__ import annotations
@@ -51,15 +14,15 @@ import numpy as np
 from scipy.sparse import load_npz, diags
 from scipy.sparse.linalg import eigsh
 
-from PyGT import stats  # PyGT.stats
+from PyGT import stats
 
 
-# ----------------------------------------------------------------------
-#  Helpers to load Markov models
-# ----------------------------------------------------------------------
+
+
+
 
 def _find_first_existing(candidates):
-    """Return the first Path in `candidates` that exists, or None."""
+    """Take the first candidate that exists."""
     for p in candidates:
         if p.exists():
             return p
@@ -67,13 +30,7 @@ def _find_first_existing(candidates):
 
 
 def load_markov_model(dps_dir: Path, T: float, coarse: bool):
-    """
-    Load B, tau, Q, pi, orig_min_ids, base_dir, tag for a given sequence and T.
-
-    dps_dir: directory like .../yyggyy_99idps_nocap
-    T: temperature in K
-    coarse: if True, use GT_kept_T{T}K/ effective model
-    """
+    """Load the arrays for one temperature, optionally from ``GT_kept``."""
     tag = f"T{int(round(T))}K"
 
     if coarse:
@@ -116,22 +73,12 @@ def load_markov_model(dps_dir: Path, T: float, coarse: bool):
     return B, tau, Q, pi, orig_ids, base, tag
 
 
-# ----------------------------------------------------------------------
-#  A/B set handling (min.A / min.B)
-# ----------------------------------------------------------------------
+
+
+
 
 def _read_min_set(path: Path) -> np.ndarray:
-    """
-    Read PATHSAMPLE-style min.A / min.B files.
-
-    These are plain text. Common formats:
-
-      - First line = count, then that many integer IDs (possibly multiple per line).
-      - Or simply a list of integer IDs, one per line.
-
-    We detect the "count" convention by checking if the first integer equals
-    (total_count - 1). If yes, we drop it; otherwise we treat all integers as IDs.
-    """
+    """Read min.A/min.B, dropping the optional leading count."""
     if not path.exists():
         return np.array([], dtype=int)
 
@@ -141,25 +88,19 @@ def _read_min_set(path: Path) -> np.ndarray:
     if data.size == 0:
         return data
 
-    # Heuristic: first integer may be "how many IDs"
+
     first = int(data[0])
     n_rest = data.size - 1
     if n_rest == first:
-        # PATHSAMPLE convention: first entry is count
+
         return data[1:]
     else:
-        # Treat all entries as IDs
+
         return data
 
 
 def make_AB_selectors(dps_dir: Path, orig_ids: np.ndarray):
-    """
-    Build boolean selectors A_sel, B_sel on the *current* model indices,
-    using original minimum IDs matched against min.A and min.B in the DPS dir.
-
-    orig_ids: array of original PATHSAMPLE min indices corresponding to
-              rows/cols of Q, B, etc. (micro or coarse).
-    """
+    """Map the original min.A/min.B IDs into the current model indices."""
     A_ids = _read_min_set(dps_dir / "min.A")
     B_ids = _read_min_set(dps_dir / "min.B")
 
@@ -176,19 +117,12 @@ def make_AB_selectors(dps_dir: Path, orig_ids: np.ndarray):
     return A_sel, B_sel
 
 
-# ----------------------------------------------------------------------
-#  Spectrum: reversible CTMC → symmetric similarity transform
-# ----------------------------------------------------------------------
+
+
+
 
 def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
-    """
-    Robust slow-mode spectrum for reversible CTMC.
-
-    Computes the slowest nonzero eigenvalues (closest to 0 from below) and
-    relaxation timescales tau_k = -1/lambda_k.
-
-    Works best for coarse models (N ~ 10^2–10^4).
-    """
+    """Get the slow nonzero CTMC modes and their relaxation times."""
     import numpy as np
     from scipy.sparse import diags
     from scipy.sparse.linalg import eigsh, ArpackNoConvergence
@@ -198,12 +132,12 @@ def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
     if max_eigs <= 0 or N <= 1:
         return
 
-    # Ask for one extra eigenvalue to include the stationary mode (0)
+
     k = min(max_eigs + 1, N - 1)
     if k <= 0:
         return
 
-    # Guard against tiny pi
+
     pi_safe = np.clip(np.asarray(pi, dtype=float), 1e-300, None)
     sqrt_pi = np.sqrt(pi_safe)
     inv_sqrt_pi = 1.0 / sqrt_pi
@@ -211,10 +145,10 @@ def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
     S = diags(sqrt_pi)
     Sinv = diags(inv_sqrt_pi)
 
-    # Reversible symmetric similarity transform of Q^T
+
     L = S @ Q.T @ Sinv
 
-    # If numerical noise breaks symmetry slightly, symmetrize
+
     try:
         asym = spnorm(L - L.T, ord=1) / max(spnorm(L, ord=1), 1e-300)
         if asym < 1e-10:
@@ -224,8 +158,8 @@ def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
 
     def postprocess(vals):
         vals = np.real(vals)
-        vals = np.sort(vals)[::-1]  # closest to 0 first
-        nonzero = vals[vals < -1e-12]  # drop stationary ~0 mode
+        vals = np.sort(vals)[::-1]
+        nonzero = vals[vals < -1e-12]
         if nonzero.size == 0:
             raise RuntimeError("No nonzero negative eigenvalues found.")
         slow = nonzero[:max_eigs]
@@ -237,7 +171,7 @@ def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
 
     print(f"[mfpt_analysis] Computing {k-1} slow eigenvalues for N={N}...")
 
-    # 1) Try standard eigsh first
+
     try:
         vals, _ = eigsh(L, k=k, which="LA", tol=1e-10, maxiter=200000)
         postprocess(vals)
@@ -247,13 +181,13 @@ def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
     except Exception as e:
         print(f"[mfpt_analysis] WARNING: LA eigsh failed ({type(e).__name__}: {e}); trying shift-invert...")
 
-    # 2) Shift-invert near 0 (avoid sigma=0 exactly because of the stationary mode)
+
     for sigma in (-1e-12, -1e-10, -1e-8):
         try:
             print(f"[mfpt_analysis] Shift-invert eigsh with sigma={sigma} ...")
             vals, _ = eigsh(
                 L, k=k,
-                sigma=sigma, which="LM",   # eigenvalues closest to sigma become largest in transformed operator
+                sigma=sigma, which="LM",
                 tol=1e-10, maxiter=500000
             )
             postprocess(vals)
@@ -267,9 +201,9 @@ def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
 
 
 
-# ----------------------------------------------------------------------
-#  AB kinetics using PyGT
-# ----------------------------------------------------------------------
+
+
+
 
 def compute_AB_kinetics(
     dps_dir: Path,
@@ -281,14 +215,10 @@ def compute_AB_kinetics(
     out_dir: Path,
     tag: str,
 ):
-    """
-    Use PyGT to get MFPTs / rates between A and B and save them.
+    """Calculate and save the A/B MFPTs.
 
-    Cases:
-      - If |A|=0 or |B|=0: just save sizes and bail.
-      - If |A|=|B|=1: use PyGT.stats.compute_passage_stats (exact MFPT, no GT).
-      - Otherwise: use PyGT.stats.compute_rates, which does graph transformation
-        internally and gives MFPTs and phenomenological rates (kSS, kNSS, k*, kF, etc.).
+    Singleton A/B sets use ``compute_passage_stats``; larger sets go through
+    PyGT's graph-transformation rate calculation.
     """
     A_sel, B_sel = make_AB_selectors(dps_dir, orig_ids)
     if A_sel is None or B_sel is None:
@@ -305,16 +235,16 @@ def compute_AB_kinetics(
         np.savez(out_dir / f"AB_kinetics_{tag}.npz", **results)
         return
 
-    # Degenerate case: exactly one source microstate and one sink microstate.
-    # PyGT.stats.compute_rates explicitly rejects this case, so we use the
-    # direct MFPT formula from compute_passage_stats instead. 
+
+
+
     if nA == 1 and nB == 1:
         print(
             "[mfpt_analysis] A and B each have 1 state; "
             "using PyGT.stats.compute_passage_stats for MFPTs only."
         )
-        # With dopdf=False, compute_passage_stats returns only tau:
-        # tau = [T_BA, Var_BA, T_AB, Var_AB]. 
+
+
         tau_moments = stats.compute_passage_stats(
             A_sel, B_sel, pi, Q, dopdf=False
         )
@@ -328,9 +258,9 @@ def compute_AB_kinetics(
             }
         )
     else:
-        # General case: use Wales/Swinburne phenomenological rates.
-        # compute_rates() removes intermediates (I set) by GT, then solves
-        # the MFPT and rate problem on the reduced A∪B network. 
+
+
+
         print("[mfpt_analysis] Using PyGT.stats.compute_rates for MFPTs and rates...")
         rate_dict = stats.compute_rates(
             A_sel,
@@ -342,7 +272,7 @@ def compute_AB_kinetics(
             fullGT=False,
             screen=False,
         )
-        # Flatten dictionary to plain Python/scalar types
+
         for k, v in rate_dict.items():
             results[k] = float(np.asarray(v))
 
@@ -351,14 +281,12 @@ def compute_AB_kinetics(
     print(f"[mfpt_analysis] Saved AB kinetics → {out_path}")
 
 
-# ----------------------------------------------------------------------
-#  Main driver
-# ----------------------------------------------------------------------
+
+
+
 
 def analyse_one(dps_dir: Path, T: float, coarse: bool, max_eigs: int):
-    """
-    Run spectrum + AB kinetics for a single DPS directory at temperature T.
-    """
+    """Run the spectrum and A/B calculation for one DPS folder."""
     model_label = "coarse" if coarse else "micro"
     print(f"[mfpt_analysis] Analysing {dps_dir} at T = {T} K ({model_label} model)")
 
@@ -366,10 +294,10 @@ def analyse_one(dps_dir: Path, T: float, coarse: bool, max_eigs: int):
     N = Q.shape[0]
     print(f"[mfpt_analysis] Model: {model_label}, N = {N}")
 
-    # 1) Spectrum (slowest relaxation modes)
+
     compute_spectrum(Q, pi=pi, max_eigs=max_eigs, out_dir=out_dir, tag=tag)
 
-    # 2) A/B MFPTs and phenomenological rates
+
     compute_AB_kinetics(
         dps_dir=dps_dir,
         B=B,

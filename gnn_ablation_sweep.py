@@ -1,32 +1,8 @@
 #!/usr/bin/env python
-"""
-gnn_ablation_sweep.py
+"""Run the GAT committor ablation grid.
 
-Systematic hyperparameter ablation for GAT committor prediction.
-
-Sweeps over:
-    top_k     ∈ {5, 10, 20, 50, 100}
-    hidden_dim ∈ {32, 64, 128}
-    n_layers  ∈ {2, 3, 4}
-
-Each configuration is identified by its SLURM_ARRAY_TASK_ID, so the full
-sweep can be submitted as a single SLURM array job (45 configs total).
-
-This script:
-    1. Maps TASK_ID → (top_k, hidden_dim, n_layers)
-    2. Loads the KTN dataset (cached from previous runs)
-    3. Sparsifies to the given top_k
-    4. Trains GAT for the committor task
-    5. Saves metrics to {out_dir}/metrics_{config_name}.json
-
-A companion script (gnn_ablation_aggregate.py) collects all JSON files
-into a summary CSV and heatmap after all array tasks complete.
-
-Usage (standalone — for testing a single config):
-    python gnn_ablation_sweep.py --task-id 0
-
-Usage (SLURM array — submit via run_gnn_ablation.sbatch):
-    sbatch --array=0-44 run_gnn_ablation.sbatch
+Each SLURM task picks one ``(top_k, hidden_dim, n_layers)`` setup and writes its
+own metrics JSON. ``gnn_ablation_aggregate.py`` puts them together afterward.
 """
 
 from __future__ import annotations
@@ -43,16 +19,16 @@ from ktn_dataset import KTNDataset
 from train_gnn_v2 import sparsify_graph, enrich_node_features, train_single_config
 
 
-# ======================================================================
-#  Sweep grid
-# ======================================================================
+
+
+
 
 TOP_K_VALUES = [5, 10, 20, 50, 100]
 HIDDEN_DIM_VALUES = [32, 64, 128]
 N_LAYERS_VALUES = [2, 3, 4]
 
 def build_grid():
-    """Build a flat list of all (top_k, hidden_dim, n_layers) configs."""
+    """Flatten the three ablation settings into one job list."""
     grid = []
     for k in TOP_K_VALUES:
         for h in HIDDEN_DIM_VALUES:
@@ -61,12 +37,12 @@ def build_grid():
     return grid
 
 GRID = build_grid()
-N_CONFIGS = len(GRID)  # 5 × 3 × 3 = 45
+N_CONFIGS = len(GRID)
 
 
-# ======================================================================
-#  Main
-# ======================================================================
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -111,7 +87,7 @@ def main():
     print(f"  config_name: {config_name}")
     print(f"{'='*60}\n")
 
-    # ── Load dataset ───────────────────────────────────────────────────
+
     from config import BASE_DIR
     print("[ablation] Loading dataset...")
     dataset = KTNDataset(
@@ -123,14 +99,14 @@ def main():
     )
     print(f"[ablation] {len(dataset)} graphs loaded.")
 
-    # ── Sparsify ───────────────────────────────────────────────────────
+
     raw_list = list(dataset)
     print(f"[ablation] Sparsifying to top-{top_k}...")
     sparse_list = []
     for data in raw_list:
         sparse_list.append(sparsify_graph(data, top_k=top_k))
 
-    # ── Train GAT ──────────────────────────────────────────────────────
+
     try:
         metrics = train_single_config(
             data_list=sparse_list,
@@ -167,7 +143,7 @@ def main():
         print(f"[ablation] Failure record saved: {out_path}")
         return
 
-    # ── Enrich metrics with sweep parameters ───────────────────────────
+
     if metrics:
         metrics.update({
             "conv_type": "gat",

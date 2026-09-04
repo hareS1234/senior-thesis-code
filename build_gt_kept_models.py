@@ -1,34 +1,8 @@
 #!/usr/bin/env python3
-"""
-build_gt_kept_models.py
+"""Build the GT-kept coarse models from the microscopic KTNs.
 
-Create GT-eliminated ("kept") coarse-grained CTMC models from microscopic KTN data.
-
-For each markov_T{T}K/ directory, we:
-  1) Load B, tau, pi, and original_min_ids (micro model)
-  2) Build A/B selectors from min.A/min.B (always retained)
-  3) Choose additional kept minima using a percentile-based criterion
-     (recommended: style='hybrid' using both free energy -log(pi) and escape time tau)
-  4) Apply NGT / graph transformation to eliminate all other nodes:
-        B_eff, tau_eff, Q_eff = PyGT.GT.blockGT(rm_vec, B, tau, rates=True, ...)
-  5) Save coarse model to: markov_T{T}K/GT_kept_T{T}K/
-
-Outputs per markov_T{T}K/:
-  GT_kept_T{T}K/
-      B_eff_T{T}K.npz
-      Q_eff_T{T}K.npz
-      tau_eff_T{T}K.npy
-      pi_eff_T{T}K.npy
-      original_min_ids_eff_T{T}K.npy
-      kept_mask_eff_T{T}K.npy
-      micro_to_eff_index_T{T}K.npy
-      A_states_T{T}K.npy
-      B_states_T{T}K.npy
-
-Notes:
-- Uses column-sum convention for Q.
-- pi_eff is taken as pi restricted to kept states and renormalized, then checked
-  against Q_eff; if the stationarity residual is poor, we fall back to solving Q_eff pi=0.
+A/B states always stay in the model. The rest of the keep set comes from the
+free-energy and escape-time cutoffs. Q uses the column-sum convention here.
 """
 
 from __future__ import annotations
@@ -46,9 +20,9 @@ from scipy.sparse.linalg import spsolve
 import PyGT.GT as GT
 
 
-# -------------------------
-# Utilities: file discovery
-# -------------------------
+
+
+
 TAG_RE = re.compile(r"^markov_(T\d+K)$")
 
 
@@ -65,7 +39,7 @@ def parse_tag(markov_dir: Path) -> Optional[str]:
 
 
 def iter_markov_dirs(root: Path, only_T: Optional[int]) -> Iterable[Path]:
-    # Expected: root/SEQ_DIR/DPS_DIR/markov_TxxxK
+
     for md in root.glob("*/*/markov_T*"):
         if not md.is_dir():
             continue
@@ -79,15 +53,11 @@ def iter_markov_dirs(root: Path, only_T: Optional[int]) -> Iterable[Path]:
         yield md
 
 
-# -------------------------
-# A/B set handling
-# -------------------------
+
+
+
 def _read_min_set(path: Path) -> np.ndarray:
-    """
-    Read PATHSAMPLE min.A/min.B:
-      - either: first entry is count, followed by that many IDs
-      - or: plain list of IDs
-    """
+    """Read either flavor of PATHSAMPLE min.A/min.B file."""
     if not path.exists():
         return np.array([], dtype=int)
     data = np.loadtxt(path, dtype=int, ndmin=1)
@@ -112,9 +82,9 @@ def make_AB_selectors(dps_dir: Path, orig_ids: np.ndarray) -> Tuple[np.ndarray, 
     return A_sel, B_sel
 
 
-# -------------------------
-# Selection criteria (kept minima)
-# -------------------------
+
+
+
 def choose_rm_vec(
     pi: np.ndarray,
     tau: np.ndarray,
@@ -123,11 +93,9 @@ def choose_rm_vec(
     percent_retained: float,
     min_kept: int,
 ) -> np.ndarray:
-    """
-    Return rm_vec (True = remove) using percentile rules similar to PyGT.tools.choose_nodes_to_remove,
-    but implemented here explicitly (and without the node_degree signature bug).
+    """Pick removable nodes with the same percentile idea as PyGT.
 
-    rm_region = nodes we are allowed to remove (i.e. not must_keep).
+    ``True`` means remove; anything outside ``rm_region`` is left alone.
     """
     if pi.ndim != 1 or tau.ndim != 1:
         raise ValueError("pi and tau must be 1D arrays.")
@@ -137,11 +105,11 @@ def choose_rm_vec(
     N = pi.size
     rm_region = ~must_keep
 
-    # If nothing is removable, rm_vec is all False.
+
     if not rm_region.any():
         return np.zeros(N, dtype=bool)
 
-    # Clip pi to avoid log underflow
+
     pi_safe = np.clip(pi.astype(float), 1e-300, None)
     tau_safe = tau.astype(float)
 
@@ -155,54 +123,52 @@ def choose_rm_vec(
 
     if style == "free_energy":
         fe = -np.log(pi_safe)
-        # keep lowest fe; remove fe above the pr-th percentile among removable
+
         thresh = np.percentile(fe[rm_region], pr)
         rm_vec[rm_region] = fe[rm_region] > thresh
 
     elif style == "escape_time":
-        # keep slowest tau; remove tau below the (100-pr)-th percentile among removable
+
         thresh = np.percentile(tau_safe[rm_region], 100.0 - pr)
         rm_vec[rm_region] = tau_safe[rm_region] < thresh
 
     elif style == "combined":
-        # keep largest tau*pi (slow & populated); remove below (100-pr)-th percentile
+
         metric = tau_safe * pi_safe
         thresh = np.percentile(metric[rm_region], 100.0 - pr)
         rm_vec[rm_region] = metric[rm_region] < thresh
 
     elif style == "hybrid":
-        # remove only those that are BOTH fast and high free energy
+
         fe = -np.log(pi_safe)
-        fe_thresh = np.percentile(fe[rm_region], pr)                # high FE = bad
-        tau_thresh = np.percentile(tau_safe[rm_region], 100.0 - pr)  # low tau = fast
+        fe_thresh = np.percentile(fe[rm_region], pr)
+        tau_thresh = np.percentile(tau_safe[rm_region], 100.0 - pr)
         rm_vec[rm_region] = (fe[rm_region] > fe_thresh) & (tau_safe[rm_region] < tau_thresh)
 
     else:
         raise ValueError("Invalid --style. Use: free_energy, escape_time, combined, hybrid.")
 
-    # Enforce a minimum number of kept nodes (including must_keep)
+
     keep = ~rm_vec
     if keep.sum() < min_kept:
-        # Add extra nodes by highest pi among removable nodes until min_kept is reached
-        candidates = np.where(rm_region & rm_vec)[0]  # removable but currently removed
+
+        candidates = np.where(rm_region & rm_vec)[0]
         if candidates.size > 0:
             order = candidates[np.argsort(pi_safe[candidates])[::-1]]
             need = min_kept - int(keep.sum())
             add = order[:need]
             rm_vec[add] = False
 
-    # Never remove must_keep
+
     rm_vec[must_keep] = False
     return rm_vec
 
 
-# -------------------------
-# Stationary distribution on reduced model
-# -------------------------
+
+
+
 def stationarity_residual(Q: csr_matrix, pi: np.ndarray) -> Tuple[float, float, float]:
-    """
-    Returns (||Q pi||_1, || |Q| pi ||_1, relative).
-    """
+    """Return the raw, scaled, and relative stationarity residuals."""
     r = np.linalg.norm((Q @ pi), 1)
     s = np.linalg.norm((abs(Q) @ pi), 1)
     rel = (r / s) if s > 0 else np.nan
@@ -210,16 +176,14 @@ def stationarity_residual(Q: csr_matrix, pi: np.ndarray) -> Tuple[float, float, 
 
 
 def solve_stationary(Q: csr_matrix) -> np.ndarray:
-    """
-    Solve Q pi = 0 with sum(pi)=1 by replacing the first row with ones.
-    """
+    """Solve ``Q pi = 0`` after swapping in the normalization row."""
     N = Q.shape[0]
     A = Q.tolil()
     b = np.zeros(N, dtype=float)
     A[0, :] = 1.0
     b[0] = 1.0
     pi = spsolve(A.tocsr(), b).astype(float)
-    # Clean up numerical noise
+
     pi[pi < 0] = 0.0
     s = pi.sum()
     if s <= 0:
@@ -227,9 +191,9 @@ def solve_stationary(Q: csr_matrix) -> np.ndarray:
     return pi / s
 
 
-# -------------------------
-# Main per-directory routine
-# -------------------------
+
+
+
 @dataclass
 class BuildResult:
     status: str
@@ -253,7 +217,7 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
     out_dir = markov_dir / f"GT_kept_{tag}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Output guard
+
     q_eff_path = out_dir / f"Q_eff_{tag}.npz"
     if q_eff_path.exists() and not overwrite:
         return BuildResult(
@@ -265,7 +229,7 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
             rel_stationarity_eff=np.nan,
         )
 
-    # Load required inputs
+
     B_path = markov_dir / f"B_{tag}.npz"
     tau_path = markov_dir / f"tau_{tag}.npy"
     pi_path = markov_dir / f"pi_{tag}.npy"
@@ -289,7 +253,7 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
     if pi.size != N:
         raise ValueError(f"pi length {pi.size} != tau length {N} in {markov_dir}")
 
-    # Load branching matrix; if missing, attempt to build from Q
+
     if B_path.exists():
         B = load_npz(B_path).tocsr()
     else:
@@ -297,16 +261,16 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
         if not Q_path.exists():
             raise FileNotFoundError(f"Missing B and Q in {markov_dir}")
         Q = load_npz(Q_path).tocsr()
-        # B = offdiag(Q) * diag(tau)
+
         Q_off = Q - diags(Q.diagonal())
         B = (Q_off @ diags(tau)).tocsr()
 
-    # Must-keep set = A ∪ B (if available)
+
     A_sel, B_sel = make_AB_selectors(dps_dir, orig_ids)
     nA, nB = int(A_sel.sum()), int(B_sel.sum())
     must_keep = (A_sel | B_sel)
 
-    # If min.A/min.B missing, must_keep will be empty; still proceed
+
     rm_vec = choose_rm_vec(
         pi=pi, tau=tau, must_keep=must_keep,
         style=style, percent_retained=percent_retained,
@@ -315,7 +279,7 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
     keep_mask = ~rm_vec
     N_eff_target = int(keep_mask.sum())
     if N_eff_target < 2:
-        # Force at least 2 nodes retained: keep top-2 by pi
+
         top2 = np.argsort(pi)[::-1][:2]
         keep_mask[:] = False
         keep_mask[top2] = True
@@ -323,8 +287,8 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
         rm_vec = ~keep_mask
         N_eff_target = int(keep_mask.sum())
 
-    # Run GT (this is the expensive step)
-    # blockGT returns (B_eff, tau_eff, K_eff) where K_eff is the GT-reduced generator (column-sum convention)
+
+
     B_eff, tau_eff, Q_eff = GT.blockGT(
         rm_vec=rm_vec,
         B=B,
@@ -336,7 +300,7 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
         cond_thresh=float(cond_thresh),
     )
 
-    # Normalize output types
+
     if not isspmatrix(B_eff):
         B_eff = csr_matrix(B_eff)
     else:
@@ -349,18 +313,18 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
 
     tau_eff = np.asarray(tau_eff, dtype=float).ravel()
 
-    # Build mapping arrays
+
     keep_idx = np.where(keep_mask)[0]
     orig_ids_eff = orig_ids[keep_mask]
 
     micro_to_eff = -np.ones(N, dtype=int)
     micro_to_eff[keep_idx] = np.arange(keep_idx.size, dtype=int)
 
-    # Reduced A/B selectors
+
     A_eff = A_sel[keep_mask]
     B_eff_sel = B_sel[keep_mask]
 
-    # pi_eff: start with restricted pi; fall back to solving if needed
+
     pi_eff = np.asarray(pi[keep_mask], dtype=float)
     pi_eff_sum = pi_eff.sum()
     if pi_eff_sum <= 0:
@@ -371,10 +335,10 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
         if not np.isfinite(rel) or rel > 1e-10:
             pi_eff = solve_stationary(Q_eff)
 
-    # Final stationarity check
+
     _, _, rel_eff = stationarity_residual(Q_eff, pi_eff)
 
-    # Save outputs
+
     save_npz(out_dir / f"B_eff_{tag}.npz", B_eff)
     save_npz(out_dir / f"Q_eff_{tag}.npz", Q_eff)
     np.save(out_dir / f"tau_eff_{tag}.npy", tau_eff)
@@ -450,7 +414,7 @@ def main() -> None:
               flush=True)
         results.append(res)
 
-    # Write report
+
     with open(args.report, "w", encoding="utf-8") as fh:
         fh.write(f"GT-kept build report for root: {root}\n")
         fh.write(f"style={args.style}  percent_retained={args.percent_retained}  min_kept={args.min_kept}\n")

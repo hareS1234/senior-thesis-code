@@ -1,15 +1,4 @@
-"""
-summaries_and_regression.py
-
-Quick analysis of the aggregated per-run summaries:
-
-- load all_sequences_summary.csv
-- basic sanity checks
-- example regressions (e.g. MFPT vs barrier distances)
-- save a couple of small CSVs / plots you can drop into the thesis.
-
-You will almost certainly tweak/extend this in thesis_analysis.ipynb.
-"""
+"""Small summary tables and starter regressions for the notebook."""
 
 from __future__ import annotations
 
@@ -18,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression  # conda install scikit-learn
+from sklearn.linear_model import LinearRegression
 
 THIS_DIR = Path(__file__).resolve().parent
 SUMMARY_CSV = THIS_DIR / "all_sequences_summary.csv"
@@ -34,15 +23,10 @@ def load_summary() -> pd.DataFrame:
 
 
 def simple_regressions(df: pd.DataFrame):
-    """
-    Example regressions:
-    - log(MFPT_AB) vs avg_barrier_AB
-    - log(MFPT_AB) vs min_barrier_AB
-    - log(MFPT_AB) vs avg_rate_length_AB
-    """
+    """Run the three quick MFPT regressions used for the first pass."""
 
     df = df.copy()
-    df = df[df["has_AB"]]  # keep only runs with A/B defined
+    df = df[df["has_AB"]]
     df = df.replace([np.inf, -np.inf], np.nan).dropna(
         subset=[
             "mfpt_AB",
@@ -78,7 +62,7 @@ def simple_regressions(df: pd.DataFrame):
             }
         )
 
-        # quick scatter plot
+
         plt.figure(figsize=(5, 4))
         plt.scatter(X[:, 0], y, s=10, alpha=0.7)
         xs = np.linspace(X[:, 0].min(), X[:, 0].max(), 100)

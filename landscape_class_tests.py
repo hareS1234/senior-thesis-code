@@ -1,28 +1,7 @@
 #!/usr/bin/env python
-"""
-landscape_class_tests.py
+"""Compare kinetics across the three disconnectivity-graph classes.
 
-Statistical tests for kinetic differences between disconnectivity-graph
-landscape classes (single-funnel, moderately frustrated, multi-funnel).
-
-Tests performed:
-    1. Kruskal-Wallis H-test across three classes (non-parametric one-way ANOVA)
-    2. Pairwise Mann-Whitney U tests with Bonferroni correction
-    3. Effect sizes (rank-biserial correlation for each pair)
-
-Targets: log10(MFPT_AB), log10(MFPT_BA), log10(t1), t1/t2
-
-Outputs
--------
-  {out_dir}/kruskal_wallis_results.csv        — H statistic, p-value per target
-  {out_dir}/mann_whitney_pairwise.csv          — all pairwise comparisons
-  {out_dir}/landscape_class_descriptive.csv    — per-class descriptive stats
-  {out_dir}/fig_landscape_class_boxplots.pdf   — box + strip plots per target
-
-Usage:
-    python landscape_class_tests.py \
-        --targets-csv GTcheck_micro_vs_coarse_T300K_full.csv \
-        --out-dir landscape_class_tests
+Runs the Kruskal-Wallis and pairwise Mann-Whitney tests used in the thesis.
 """
 
 from __future__ import annotations
@@ -42,12 +21,12 @@ from scipy import stats
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-# ======================================================================
-#  Landscape class assignments (from Table 4.2 in the thesis)
-# ======================================================================
+
+
+
 
 LANDSCAPE_CLASSES = {
-    # Single-funnel
+
     "aaaaaa": "single-funnel",
     "aaggaa": "single-funnel",
     "eeeeee": "single-funnel",
@@ -55,7 +34,7 @@ LANDSCAPE_CLASSES = {
     "kkkkkk": "single-funnel",
     "rrrrrr": "single-funnel",
     "vvvvvv": "single-funnel",
-    # Moderately frustrated
+
     "ffggff": "moderate",
     "flgglf": "moderate",
     "lfggfl": "moderate",
@@ -70,7 +49,7 @@ LANDSCAPE_CLASSES = {
     "ykggky": "moderate",
     "yrggry": "moderate",
     "yyggyy": "moderate",
-    # Multi-funnel
+
     "gaiigl": "multi-funnel",
     "gailss": "multi-funnel",
     "ggvvia": "multi-funnel",
@@ -90,45 +69,36 @@ CLASS_DISPLAY = {
 }
 
 
-# ======================================================================
-#  Effect size: rank-biserial correlation
-# ======================================================================
+
+
+
 
 def rank_biserial(x: np.ndarray, y: np.ndarray) -> float:
-    """
-    Rank-biserial correlation r_rb as effect size for Mann-Whitney U.
-
-        r_rb = 1 - 2U / (n1 * n2)
-
-    Interpretation:
-        |r_rb| < 0.3  : small
-        0.3-0.5       : medium
-        > 0.5         : large
-    """
+    """Rank-biserial effect size for a Mann-Whitney result."""
     res = stats.mannwhitneyu(x, y, alternative="two-sided")
     n1, n2 = len(x), len(y)
     return 1.0 - (2.0 * res.statistic) / (n1 * n2)
 
 
-# ======================================================================
-#  Data loading and class assignment
-# ======================================================================
+
+
+
 
 def load_and_classify(targets_csv: Path) -> pd.DataFrame:
-    """Load GT validation CSV and assign landscape classes."""
+    """Load the GT checks and attach the landscape labels."""
     df = pd.read_csv(targets_csv)
 
-    # Extract sequence from dps_dir (e.g., "aaaaaa_nocap/aaaaaa_99idps_nocap" -> "aaaaaa")
+
     df["dps_dir"] = df["dps_dir"].astype(str).str.rstrip("/")
     df["sequence"] = df["dps_dir"].apply(
         lambda p: Path(p).parent.name.replace("_nocap", "")
         if "/" in p else Path(p).name.split("_")[0]
     )
 
-    # Assign landscape class
+
     df["landscape_class"] = df["sequence"].map(LANDSCAPE_CLASSES)
 
-    # Add log-transformed targets
+
     for col, log_col in [
         ("MFPT_coarse_AB", "log_MFPT_AB"),
         ("MFPT_coarse_BA", "log_MFPT_BA"),
@@ -139,20 +109,14 @@ def load_and_classify(targets_csv: Path) -> pd.DataFrame:
             with np.errstate(divide="ignore", invalid="ignore"):
                 df[log_col] = np.log10(vals.values)
 
-    # Keep only rows with a valid class and at least one finite target
+
     df = df[df["landscape_class"].notna()].copy()
 
     return df
 
 
 def finite_analysis_subset(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Restrict to the networks used for the class-level kinetic comparison.
-
-    The main-text table groups the 36 systems with complete coarse observables,
-    so the statistical tests should operate on the same subset rather than on
-    whichever rows happen to be finite target-by-target.
-    """
+    """Use the same 36 complete systems as the main-text table."""
     required = ["log_MFPT_AB", "log_MFPT_BA", "log_t1", "t1_over_t2"]
     keep = np.ones(len(df), dtype=bool)
     for col in required:
@@ -162,9 +126,9 @@ def finite_analysis_subset(df: pd.DataFrame) -> pd.DataFrame:
     return df.loc[keep].copy()
 
 
-# ======================================================================
-#  Main analysis
-# ======================================================================
+
+
+
 
 TARGET_COLS = {
     "log_MFPT_AB": "$\\log_{10}\\mathrm{MFPT}_{A \\to B}$",
@@ -186,7 +150,7 @@ def main():
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Load and classify ──────────────────────────────────────────────
+
     df = load_and_classify(args.targets_csv)
     analysis_df = finite_analysis_subset(df)
     print(f"[landscape_tests] {len(df)} classified networks loaded")
@@ -197,7 +161,7 @@ def main():
 
     analysis_df.to_csv(args.out_dir / "analysis_networks.csv", index=False)
 
-    # ── Descriptive statistics ─────────────────────────────────────────
+
     desc_rows = []
     for target in TARGET_COLS:
         if target not in analysis_df.columns:
@@ -225,7 +189,7 @@ def main():
     desc_df.to_csv(args.out_dir / "landscape_class_descriptive.csv", index=False)
     print("\n[landscape_tests] Descriptive statistics saved.")
 
-    # ── Kruskal-Wallis tests ───────────────────────────────────────────
+
     kw_rows = []
     for target in TARGET_COLS:
         if target not in analysis_df.columns:
@@ -243,7 +207,7 @@ def main():
             continue
 
         H, p = stats.kruskal(*groups)
-        # Effect size: eta-squared (H) = (H - k + 1) / (N - k)
+
         N_total = sum(len(g) for g in groups)
         k = len(groups)
         eta_sq_H = (H - k + 1) / (N_total - k) if N_total > k else np.nan
@@ -267,9 +231,9 @@ def main():
     kw_df = pd.DataFrame(kw_rows)
     kw_df.to_csv(args.out_dir / "kruskal_wallis_results.csv", index=False)
 
-    # ── Pairwise Mann-Whitney U with Bonferroni correction ─────────────
+
     mw_rows = []
-    n_comparisons = 3  # C(3,2) = 3 pairs
+    n_comparisons = 3
 
     for target in TARGET_COLS:
         if target not in analysis_df.columns:
@@ -320,7 +284,7 @@ def main():
     mw_df = pd.DataFrame(mw_rows)
     mw_df.to_csv(args.out_dir / "mann_whitney_pairwise.csv", index=False)
 
-    # ── Box + strip plots ──────────────────────────────────────────────
+
     available_targets = [t for t in TARGET_COLS if t in df.columns]
     n_targets = len(available_targets)
 
@@ -356,7 +320,7 @@ def main():
                 median.set_color("black")
                 median.set_linewidth(1.5)
 
-            # Strip (jitter) overlay
+
             for pos_i, vals in zip(positions, plot_data):
                 jitter = np.random.default_rng(42).uniform(-0.12, 0.12, size=len(vals))
                 cls = CLASS_ORDER[pos_i]
@@ -369,7 +333,7 @@ def main():
             ax.set_ylabel(TARGET_COLS[target], fontsize=11)
             ax.grid(True, axis="y", alpha=0.3)
 
-            # Add significance bars from Kruskal-Wallis
+
             kw_row = kw_df[kw_df["target"] == target]
             if len(kw_row) > 0:
                 p = kw_row.iloc[0]["p_value"]
@@ -415,7 +379,7 @@ def main():
         plt.close(fig)
         print(f"\n[landscape_tests] Box plots saved.")
 
-    # ── Print summary ──────────────────────────────────────────────────
+
     print(f"\n{'='*60}")
     print("  KRUSKAL-WALLIS SUMMARY")
     print(f"{'='*60}")

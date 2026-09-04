@@ -1,19 +1,5 @@
 #!/usr/bin/env python
-"""
-train_gnn.py
-
-Training and evaluation for GNN models on KTN data.
-
-Supports three modes:
-    --mode node     : Node-level training (committor or MFPT)
-    --mode graph    : Graph-level LOO-CV (predict MFPT_AB, t1, etc.)
-    --mode multitask: Pretrain on node targets, finetune for graph targets
-
-Usage:
-    python train_gnn.py --mode node   --root ktn_pyg_data --task committor
-    python train_gnn.py --mode graph  --root ktn_pyg_data --target 0
-    python train_gnn.py --mode multitask --root ktn_pyg_data
-"""
+"""Train the node, graph, or multitask GNN."""
 
 from __future__ import annotations
 
@@ -37,20 +23,20 @@ from torch_geometric.loader import DataLoader
 from ktn_dataset import KTNDataset
 from gnn_models import KTNNodeModel, KTNGraphModel, KTNMultiTaskModel
 
-# Graph-level target columns (indices into data.y[0])
+
 TARGET_NAMES = ["log_MFPT_coarse_AB", "log_MFPT_coarse_BA", "log_t1", "t1_over_t2"]
 
 
 def resolve_device(device: str = "auto") -> torch.device:
-    """Resolve requested device string to a torch.device."""
+    """Pick the requested Torch device, with the usual fallbacks."""
     if device == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device(device)
 
 
-# ======================================================================
-#  Node-level training
-# ======================================================================
+
+
+
 
 def train_node_level(
     dataset,
@@ -69,18 +55,16 @@ def train_node_level(
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
-    """
-    Train node-level model across all graphs.
+    """Train on 80% of interior nodes and validate on the rest.
 
-    80% of interior nodes (not A/B) are training, 20% validation.
-    A/B nodes have fixed targets and are always in training.
+    A/B boundary nodes always stay in the training split.
     """
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     device = resolve_device(device)
 
-    # Determine feature dims from first graph
+
     sample = dataset[0]
     node_dim = sample.x.shape[1]
     edge_dim = sample.edge_attr.shape[1] if sample.edge_attr is not None else 0
@@ -95,7 +79,7 @@ def train_node_level(
         optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5,
     )
 
-    # Build train/val masks for each graph
+
     data_list = []
     target_attr = "committor" if task == "committor" else "mfpt_to_B"
     for graph_idx, data in enumerate(dataset):
@@ -121,7 +105,7 @@ def train_node_level(
         train_mask = torch.zeros(N, dtype=torch.bool)
         val_mask = torch.zeros(N, dtype=torch.bool)
 
-        # A/B always train
+
         train_mask[data.A_mask] = True
         train_mask[data.B_mask] = True
         train_mask[torch.from_numpy(interior_idx[:split])] = True
@@ -143,7 +127,7 @@ def train_node_level(
 
     loader = DataLoader(data_list, batch_size=batch_size, shuffle=True)
 
-    # Loss function
+
     if task == "committor":
         loss_fn = nn.BCELoss(reduction="none")
     else:
@@ -177,7 +161,7 @@ def train_node_level(
 
         avg_train_loss = total_train_loss / max(n_train, 1)
 
-        # Validation
+
         model.eval()
         total_val_loss = 0.0
         n_val = 0
@@ -211,7 +195,7 @@ def train_node_level(
             print(f"  Epoch {epoch+1:4d}  train_loss={avg_train_loss:.6f}  "
                   f"val_loss={avg_val_loss:.6f}")
 
-    # Final evaluation with best model
+
     model.load_state_dict(best_state)
     model.eval()
 
@@ -245,14 +229,14 @@ def train_node_level(
     print(f"\n  Node-level {task}: val R² = {metrics['val_r2']:.4f}, "
           f"val MAE = {metrics['val_mae']:.6f}")
 
-    # Save
+
     out_dir.mkdir(parents=True, exist_ok=True)
     torch.save(best_state, out_dir / f"node_model_{task}.pt")
 
     with open(out_dir / f"node_metrics_{task}.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
-    # Plot
+
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     axes[0].plot(history["train_loss"], label="Train")
@@ -277,9 +261,9 @@ def train_node_level(
     return metrics
 
 
-# ======================================================================
-#  Graph-level LOO-CV
-# ======================================================================
+
+
+
 
 def train_graph_level_loocv(
     dataset,
@@ -297,15 +281,10 @@ def train_graph_level_loocv(
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
-    """
-    Leave-one-out CV for graph-level prediction.
-
-    For each held-out graph: train fresh model on N-1 graphs, predict held-out.
-    Ensemble over n_seeds random initializations.
-    """
+    """Train a fresh seed ensemble for each held-out graph."""
     target_name = TARGET_NAMES[target_idx]
 
-    # Filter to graphs with valid targets
+
     valid_data = []
     for data in dataset:
         if data.y is not None and not torch.isnan(data.y[0, target_idx]):
@@ -342,7 +321,7 @@ def train_graph_level_loocv(
             optimizer = torch.optim.Adam(model.parameters(), lr=lr,
                                          weight_decay=weight_decay)
 
-            # Split training into train/val for early stopping
+
             n_train_graphs = len(train_data)
             n_val = max(1, n_train_graphs // 6)
             rng = np.random.default_rng(seed)
@@ -372,7 +351,7 @@ def train_graph_level_loocv(
                     nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
                     optimizer.step()
 
-                # Validation
+
                 model.eval()
                 val_loss = float("inf")
                 with torch.no_grad():
@@ -391,7 +370,7 @@ def train_graph_level_loocv(
                     if wait >= patience:
                         break
 
-            # Predict held-out graph
+
             model.load_state_dict(best_state)
             model.eval()
             with torch.no_grad():
@@ -401,7 +380,7 @@ def train_graph_level_loocv(
 
             y_pred_all[fold_idx, seed] = pred
 
-        # Average over seeds
+
         y_pred_avg = float(np.nanmean(y_pred_all[fold_idx]))
         print(f"  Fold {fold_idx+1:2d}/{N} ({seq_name:15s}): "
               f"true={y_true[fold_idx]:.4f}, pred={y_pred_avg:.4f}")
@@ -415,7 +394,7 @@ def train_graph_level_loocv(
             completed_folds=fold_idx + 1,
         )
 
-    # Ensemble average predictions
+
     y_pred_final = np.nanmean(y_pred_all, axis=1)
 
     from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
@@ -430,7 +409,7 @@ def train_graph_level_loocv(
     print(f"\n  {target_name} LOO-CV: R² = {metrics['r2']:.3f}, "
           f"RMSE = {metrics['rmse']:.4f}, MAE = {metrics['mae']:.4f}")
 
-    # Save
+
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / f"graph_loocv_{target_name}.json", "w") as f:
         json.dump(metrics, f, indent=2)
@@ -439,7 +418,7 @@ def train_graph_level_loocv(
              y_true=y_true, y_pred=y_pred_final,
              y_pred_all_seeds=y_pred_all)
 
-    # Plot
+
     labels = [getattr(d, "sequence", f"g{i}") for i, d in enumerate(valid_data)]
     fig, ax = plt.subplots(1, 1, figsize=(7, 6))
     ax.scatter(y_true, y_pred_final, s=50, alpha=0.7, edgecolors="k", linewidths=0.5)
@@ -460,9 +439,9 @@ def train_graph_level_loocv(
     return metrics
 
 
-# ======================================================================
-#  Multi-task: pretrain node → finetune graph
-# ======================================================================
+
+
+
 
 def train_multitask(
     dataset,
@@ -483,15 +462,11 @@ def train_multitask(
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
-    """
-    Two-stage training with LOO-CV:
-        1. Pre-train shared backbone on node-level task (all training graphs)
-        2. Fine-tune graph head (freeze backbone optionally)
-    """
+    """Pretrain the node backbone, then tune the graph head with LOO-CV."""
     target_name = TARGET_NAMES[target_idx]
     target_attr = "committor" if node_task == "committor" else "mfpt_to_B"
 
-    # Filter to graphs with both node and graph targets
+
     valid_data = []
     for data in dataset:
         has_graph = data.y is not None and not torch.isnan(data.y[0, target_idx])
@@ -538,7 +513,7 @@ def train_multitask(
 
             train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
-            # Stage 1: Joint pre-training with early stopping
+
             best_pretrain_loss = float("inf")
             best_pretrain_state = copy.deepcopy(model.state_dict())
             pretrain_wait = 0
@@ -551,11 +526,11 @@ def train_multitask(
                     batch = batch.to(device)
                     node_pred, graph_pred = model(batch)
 
-                    # Node loss (on all nodes)
+
                     node_target = getattr(batch, target_attr)
                     n_loss = node_loss_fn(node_pred, node_target)
 
-                    # Graph loss
+
                     g_target = batch.y[:, target_idx]
                     g_loss = F.mse_loss(graph_pred.squeeze(-1), g_target)
 
@@ -579,7 +554,7 @@ def train_multitask(
 
             model.load_state_dict(best_pretrain_state)
 
-            # Stage 2: Fine-tune graph head only
+
             for param in model.backbone.parameters():
                 param.requires_grad = False
             optimizer = torch.optim.Adam(
@@ -616,7 +591,7 @@ def train_multitask(
                     if finetune_wait >= patience:
                         break
 
-            # Predict held-out
+
             model.load_state_dict(best_state)
             model.eval()
             with torch.no_grad():
@@ -662,9 +637,9 @@ def train_multitask(
     return metrics
 
 
-# ======================================================================
-#  Main
-# ======================================================================
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Train GNN on KTN data.")

@@ -1,14 +1,5 @@
 #!/usr/bin/env python
-"""
-gnn_models.py
-
-GNN architectures for KTN property prediction.
-
-Three model types:
-    KTNNodeModel      — per-node prediction (committor, MFPT)
-    KTNGraphModel     — graph-level prediction (MFPT_AB, t1, etc.)
-    KTNMultiTaskModel — shared backbone, two heads (node + graph)
-"""
+"""GNN models for node-level and whole-KTN predictions."""
 
 from __future__ import annotations
 
@@ -26,21 +17,12 @@ from torch_geometric.nn import (
 )
 
 
-# ======================================================================
-#  Message-passing backbone
-# ======================================================================
+
+
+
 
 class MPBackbone(nn.Module):
-    """
-    Shared message-passing backbone for all KTN models.
-
-    Architecture:
-        Input MLP  →  L layers of (Conv + BN + ReLU + Dropout + Residual)
-
-    Supports conv_type: "nnconv", "gat", "gcn", "gin".
-    NNConv is the default because edge features (rates, barriers) carry
-    the kinetic information that distinguishes transitions.
-    """
+    """Shared stack of graph convolutions, normalization, and residuals."""
 
     def __init__(
         self,
@@ -66,9 +48,9 @@ class MPBackbone(nn.Module):
 
         for _ in range(n_layers):
             if conv_type == "nnconv":
-                # Bottleneck edge network to avoid parameter explosion.
-                # Without bottleneck: final layer has hidden_dim * hidden_dim^2
-                # params (~262K for hidden_dim=64).  With bottleneck: ~66K.
+
+
+
                 bottleneck = max(hidden_dim // 4, 8)
                 edge_nn = nn.Sequential(
                     nn.Linear(edge_dim, bottleneck),
@@ -112,22 +94,16 @@ class MPBackbone(nn.Module):
             x = bn(x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
-            x = x + x_res  # residual
+            x = x + x_res
         return x
 
 
-# ======================================================================
-#  Node-level model
-# ======================================================================
+
+
+
 
 class KTNNodeModel(nn.Module):
-    """
-    GNN for per-node prediction (committor or MFPT).
-
-    Output: one value per node.
-    For committor: apply sigmoid to bound in [0,1].
-    For MFPT: linear output (in log-space).
-    """
+    """One prediction per node, with a sigmoid for the committor."""
 
     def __init__(
         self,
@@ -137,7 +113,7 @@ class KTNNodeModel(nn.Module):
         n_layers: int = 3,
         conv_type: str = "nnconv",
         dropout: float = 0.3,
-        task: str = "committor",  # "committor" or "mfpt"
+        task: str = "committor",
     ):
         super().__init__()
         self.task = task
@@ -159,16 +135,12 @@ class KTNNodeModel(nn.Module):
         return out
 
 
-# ======================================================================
-#  Graph-level model
-# ======================================================================
+
+
+
 
 class KTNGraphModel(nn.Module):
-    """
-    GNN for graph-level prediction (MFPT_AB, t1, etc.).
-
-    Backbone → global pooling → MLP → n_targets outputs.
-    """
+    """Pool the node embeddings into whole-graph predictions."""
 
     def __init__(
         self,
@@ -178,7 +150,7 @@ class KTNGraphModel(nn.Module):
         n_layers: int = 3,
         conv_type: str = "nnconv",
         dropout: float = 0.3,
-        readout: str = "mean",  # "mean" or "sum"
+        readout: str = "mean",
         n_targets: int = 1,
     ):
         super().__init__()
@@ -204,20 +176,12 @@ class KTNGraphModel(nn.Module):
         return self.output_mlp(graph_emb)
 
 
-# ======================================================================
-#  Multi-task model (node + graph)
-# ======================================================================
+
+
+
 
 class KTNMultiTaskModel(nn.Module):
-    """
-    Joint node + graph prediction with a shared backbone.
-
-    Two output heads:
-        node_head:  per-node predictions (committor or MFPT)
-        graph_head: readout → graph-level targets
-
-    Training loss: alpha * node_loss + (1 - alpha) * graph_loss
-    """
+    """Shared backbone with separate node and graph heads."""
 
     def __init__(
         self,
@@ -239,7 +203,7 @@ class KTNMultiTaskModel(nn.Module):
             node_dim, edge_dim, hidden_dim, n_layers, conv_type, dropout,
         )
 
-        # Node head
+
         self.node_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ReLU(),
@@ -247,7 +211,7 @@ class KTNMultiTaskModel(nn.Module):
             nn.Linear(hidden_dim // 2, 1),
         )
 
-        # Graph head
+
         self.graph_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -258,12 +222,12 @@ class KTNMultiTaskModel(nn.Module):
     def forward(self, data):
         x = self.backbone(data.x, data.edge_index, data.edge_attr)
 
-        # Node predictions
+
         node_out = self.node_head(x).squeeze(-1)
         if self.node_task == "committor":
             node_out = torch.sigmoid(node_out)
 
-        # Graph predictions
+
         if self.readout_type == "sum":
             graph_emb = global_add_pool(x, data.batch)
         else:

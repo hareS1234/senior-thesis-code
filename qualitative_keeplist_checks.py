@@ -1,19 +1,5 @@
 #!/usr/bin/env python
-"""
-qualitative_keeplist_checks.py
-
-Qualitative sanity checks for basin-based keep lists:
-
-1) Plot the distribution of single-edge barrier heights from ts.data
-2) For a grid of ΔE_cut values, compute the number of kept minima in the
-   basin-based scheme and plot N_keep vs ΔE_cut.
-
-Requires:
-- min.data with energies in column 0
-- ts.data with TS energy in column 0 and endpoint minima indices (1-based)
-  in columns 1 and 2
-- generate_basin_keep_lists.py exposing build_basin_keep_set(...)
-"""
+"""Plot a couple of quick checks for the basin keep lists."""
 
 from __future__ import annotations
 
@@ -24,12 +10,12 @@ from typing import Sequence, Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 
-# adjust this import if your function lives elsewhere / has a different name
+
 from generate_basin_keep_lists import build_basin_keep_set
 
 
 def load_min_energies(min_data_path: Path) -> np.ndarray:
-    """Load minimum energies from min.data (assumes energy in column 0)."""
+    """Read minimum energies from column 0."""
     if not min_data_path.exists():
         raise FileNotFoundError(f"{min_data_path} not found")
     E = np.loadtxt(min_data_path, usecols=0)
@@ -37,14 +23,7 @@ def load_min_energies(min_data_path: Path) -> np.ndarray:
 
 
 def load_ts_data(ts_data_path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Load TS energies and endpoint minima indices from ts.data.
-
-    Assumes:
-      col 0: TS energy
-      col 1: first minimum index (1-based)
-      col 2: second minimum index (1-based)
-    """
+    """Read TS energies and 1-based endpoint IDs from the first three columns."""
     if not ts_data_path.exists():
         raise FileNotFoundError(f"{ts_data_path} not found")
 
@@ -61,14 +40,8 @@ def compute_single_edge_barriers(
     m1: np.ndarray,
     m2: np.ndarray,
 ) -> np.ndarray:
-    """
-    For each TS, compute barrier height above the lower of the two minima:
+    """Get each TS energy above its lower endpoint minimum."""
 
-      ΔE_edge = E_TS - min(E_i, E_j)
-
-    Returns an array of ΔE_edge (same length as number of TSs).
-    """
-    # indices in files are 1-based; convert to 0-based for numpy
     E1 = E_min[m1 - 1]
     E2 = E_min[m2 - 1]
     Emin_pair = np.minimum(E1, E2)
@@ -77,9 +50,7 @@ def compute_single_edge_barriers(
 
 
 def parse_deltaE_list(raw: str) -> Sequence[float]:
-    """
-    Parse a comma-separated list like '10,20,40' into [10.0, 20.0, 40.0].
-    """
+    """Turn a comma-separated cutoff list into floats."""
     parts = [p.strip() for p in raw.split(",") if p.strip()]
     return [float(p) for p in parts]
 
@@ -140,9 +111,9 @@ def main():
     E_min = load_min_energies(min_data_path)
     E_ts, m1, m2 = load_ts_data(ts_data_path)
 
-    # ------------------------------
-    # 1) Barrier height distribution
-    # ------------------------------
+
+
+
     dE_edges = compute_single_edge_barriers(E_min, E_ts, m1, m2)
 
     print(f"[INFO] Number of TS edges: {len(dE_edges)}")
@@ -177,9 +148,9 @@ def main():
     plt.close()
     print(f"[OK]  Saved barrier histogram to {hist_path}")
 
-    # ---------------------------------------------
-    # 2) N_keep vs ΔE_cut using basin-based scheme
-    # ---------------------------------------------
+
+
+
     N_keep_list = []
     for dE in deltaE_values:
         keep_ids = build_basin_keep_set(

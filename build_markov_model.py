@@ -1,14 +1,7 @@
 #!/usr/bin/env python
-"""
-build_markov_model.py
+"""Build one microscopic Markov model from a PATHSAMPLE directory.
 
-Use PyGT to build a microscopic continuous-time Markov model for a
-PATHSAMPLE DPS directory at a given temperature.
-
-Outputs go to:
-    <DPS_DIR>/markov_TxxxK/
-
-and include B, K, Q, tau, pi, energies, entropies, etc.
+Results are saved under ``markov_TxxxK`` inside the DPS directory.
 """
 
 from __future__ import annotations
@@ -24,7 +17,7 @@ from PyGT.tools import check_detailed_balance
 
 from config import MarkovFilePaths
 
-KB_KCAL_MOLK = 0.0019872041  # kcal/mol/K
+KB_KCAL_MOLK = 0.0019872041
 
 
 def build_markov_model(
@@ -49,7 +42,7 @@ def build_markov_model(
         print(f"Output dir: {markov_dir}")
         print(f"beta = {beta:.6f} 1/{energy_unit}")
 
-    # 1. Use PyGT to get B, K, tau, energies, entropies
+
     B, K, tau, N, energies, entropies, Emin, retained = load_ktn(
         str(data_dir), beta=beta, Nmax=Nmax, Emax=Emax, screen=screen
     )
@@ -60,7 +53,7 @@ def build_markov_model(
         print(f"N = {N}, Emin shift = {Emin:.4f} {energy_unit}")
         print(f"Retained minima: {retained.sum()} of {retained.size}")
 
-    # 2. Build generator Q (columns sum to zero)
+
     escape_rates = 1.0 / tau
     Lambda = sp.diags(escape_rates, offsets=0, format="csr")
     Q = (K - Lambda).tocsr()
@@ -69,7 +62,7 @@ def build_markov_model(
     if screen:
         print(f"max |column sum of Q| = {np.max(np.abs(col_sums)):.3e}")
 
-    # 3. Stationary distribution pi ∝ exp(-β u_i + s_i)
+
     log_pi = -beta * energies + entropies
     log_pi -= np.max(log_pi)
     pi = np.exp(log_pi)
@@ -86,7 +79,7 @@ def build_markov_model(
     if screen:
         print(f"||Q*pi||_inf = {np.max(np.abs(res)):.3e}")
 
-    # 4. Optional A/B sets (if min.A/min.B exist)
+
     minA = data_dir / "min.A"
     minB = data_dir / "min.B"
     A_states = None
@@ -94,7 +87,7 @@ def build_markov_model(
     if minA.exists() and minB.exists():
         A_states, B_states = load_ktn_AB(str(data_dir), retained=retained)
 
-    # 5. Save everything
+
     def save_sparse(mat: sp.spmatrix, name: str):
         sp.save_npz(markov_dir / f"{name}_{tag}.npz", mat)
 
@@ -108,7 +101,7 @@ def build_markov_model(
     np.save(markov_dir / f"entropies_{tag}.npy", entropies)
     np.save(markov_dir / f"retained_mask_{tag}.npy", retained)
 
-    orig_ids = np.nonzero(retained)[0] + 1  # 1-based PATHSAMPLE minima IDs
+    orig_ids = np.nonzero(retained)[0] + 1
     np.save(markov_dir / f"original_min_ids_{tag}.npy", orig_ids)
 
     if A_states is not None:

@@ -1,13 +1,4 @@
-"""
-graph_distances.py
-
-Higher-level helpers to compute graph distances on the KTN:
-
-- barrier-based Dijkstra distance (additive sum of barrier heights)
-- rate-based Dijkstra distance (edge length = -log k_ij)
-
-All distances are on the retained-minima graph (same indexing as B/K/Q/pi).
-"""
+"""Distance helpers for the retained-minima graph."""
 
 from __future__ import annotations
 from pathlib import Path
@@ -35,25 +26,10 @@ def barrier_distances(
     markov_paths: MarkovFilePaths,
     sources: Optional[Iterable[int]] = None,
 ) -> np.ndarray:
-    """
-    Compute Dijkstra distances on the barrier-height graph.
+    """Run Dijkstra on the barrier graph.
 
-    Parameters
-    ----------
-    data_dir : Path
-        DPS directory containing min.data / ts.data.
-    markov_paths : MarkovFilePaths
-        Gives pygt_dir + retained_mask path.
-    sources : iterable of int or None
-        Indices (in retained-minima indexing) to use as sources.
-        If None, distances from *all* nodes are computed (N×N).
-
-    Returns
-    -------
-    dist : ndarray
-        If sources is None: shape (N, N).
-        Else: shape (len(sources), N).
-        dist[i, j] = minimal sum of barrier heights along any path i→j.
+    With no ``sources`` this returns the full N-by-N matrix; otherwise it only
+    keeps the requested source rows.
     """
     barrier_mat = build_barrier_matrix(data_dir, markov_paths)
     N = barrier_mat.shape[0]
@@ -80,37 +56,23 @@ def rate_based_lengths(
     sources: Optional[Iterable[int]] = None,
     min_rate: float = 1e-300,
 ) -> np.ndarray:
-    """
-    Compute Dijkstra distances where edge length = -log(k_ij).
+    """Run Dijkstra with ``-log(k_ij)`` edge lengths.
 
-    Uses the off-diagonal rate matrix K from PyGT.
-
-    Parameters
-    ----------
-    markov_paths : MarkovFilePaths
-        Path bundle pointing to K_TxxxK.npz.
-    sources : iterable of int or None
-        As in barrier_distances.
-    min_rate : float
-        Smallest rate to allow (values below are ignored).
-
-    Returns
-    -------
-    dist : ndarray
-        Dijkstra distances on -log(k_ij).
+    Rates below ``min_rate`` are ignored. ``sources`` works the same way as in
+    ``barrier_distances``.
     """
     K = load_sparse(markov_paths.K_path)
     N = K.shape[0]
 
-    # Build sparse adjacency lengths in (src, dst) orientation.
-    # K[dst, src] = k_{dst <- src} so each nonzero K[i, j] is edge j -> i.
+
+
     K_coo = K.tocoo()
     mask = (K_coo.row != K_coo.col) & (K_coo.data > min_rate)
     src = K_coo.col[mask]
     dst = K_coo.row[mask]
     data = -np.log(K_coo.data[mask])
 
-    # Keep edge lengths non-negative for Dijkstra compatibility.
+
     if data.size and np.min(data) < 0:
         data = data - np.min(data)
 
@@ -128,7 +90,7 @@ def rate_based_lengths(
 
     dist = shortest_path(
         L,
-        directed=True,  # rate graph is directed
+        directed=True,
         indices=indices,
         unweighted=False,
     )
