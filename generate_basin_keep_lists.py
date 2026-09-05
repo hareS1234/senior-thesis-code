@@ -9,7 +9,7 @@ window around it. IDs stay 1-based to match PATHSAMPLE.
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict, deque
+from collections import deque
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
@@ -27,7 +27,7 @@ def read_min_energies(min_data_path: Path) -> np.ndarray:
 
 
 def read_min_list(path: Path) -> List[int]:
-    """Read the first ID on each line of min.A or min.B."""
+    """Read min.A or min.B, including files with a leading count."""
     if not path.exists():
         return []
     ids: List[int] = []
@@ -41,6 +41,8 @@ def read_min_list(path: Path) -> List[int]:
                 ids.append(int(parts[0]))
             except ValueError:
                 continue
+    if ids and len(ids) - 1 == ids[0]:
+        ids = ids[1:]
     return ids
 
 

@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Hexapeptide KTN research pipeline</title>
+  <desc id="desc">PATHSAMPLE files are converted to microscopic Markov models, reduced with PyGT, validated, and analyzed with graph features or graph neural networks.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#eef4fb"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#183153"/>
+      <stop offset="1" stop-color="#244b72"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f80ed"/>
+      <stop offset="1" stop-color="#56a6f6"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#168f8a"/>
+      <stop offset="1" stop-color="#36b7a8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#16324f" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L8,4.5 L0,9 Z" fill="#7890a8"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="620" rx="28" fill="url(#bg)"/>
+  <circle cx="1127" cy="54" r="92" fill="#2f80ed" opacity="0.05"/>
+  <circle cx="75" cy="578" r="120" fill="#20a39e" opacity="0.05"/>
+
+  <text x="56" y="57" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="700" letter-spacing="1.6">RESEARCH PIPELINE</text>
+  <text x="56" y="87" fill="#60758a" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16">One route from stationary points to tested kinetic models</text>
+
+  <g filter="url(#shadow)">
+    <rect x="50" y="132" width="220" height="126" rx="18" fill="#ffffff"/>
+    <rect x="50" y="132" width="8" height="126" rx="4" fill="#f4a261"/>
+    <circle cx="91" cy="173" r="20" fill="#fff2e7"/>
+    <path d="M78 179 C84 157, 93 190, 104 162" fill="none" stroke="#e78d43" stroke-width="3" stroke-linecap="round"/>
+    <text x="122" y="168" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="1">INPUT</text>
+    <text x="122" y="191" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">PATHSAMPLE</text>
+    <text x="79" y="227" fill="#60758a" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">min.data · ts.data · A/B</text>
+
+    <rect x="340" y="132" width="220" height="126" rx="18" fill="#ffffff"/>
+    <rect x="340" y="132" width="8" height="126" rx="4" fill="#2f80ed"/>
+    <circle cx="381" cy="173" r="20" fill="#eaf3ff"/>
+    <circle cx="374" cy="169" r="4" fill="#2f80ed"/>
+    <circle cx="389" cy="164" r="4" fill="#2f80ed"/>
+    <circle cx="391" cy="182" r="4" fill="#2f80ed"/>
+    <path d="M377 168 L386 165 M377 172 L388 180 M390 168 L391 178" stroke="#2f80ed" stroke-width="2"/>
+    <text x="412" y="168" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="1">BUILD</text>
+    <text x="412" y="191" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">Microscopic KTN</text>
+    <text x="369" y="227" fill="#60758a" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">B · K · Q · τ · π</text>
+
+    <rect x="630" y="132" width="220" height="126" rx="18" fill="#ffffff"/>
+    <rect x="630" y="132" width="8" height="126" rx="4" fill="#20a39e"/>
+    <circle cx="671" cy="173" r="20" fill="#e7f8f5"/>
+    <circle cx="663" cy="173" r="6" fill="#20a39e"/>
+    <circle cx="680" cy="164" r="4" fill="#20a39e" opacity="0.45"/>
+    <circle cx="680" cy="182" r="4" fill="#20a39e" opacity="0.45"/>
+    <path d="M668 170 L677 166 M668 176 L677 180" stroke="#168f8a" stroke-width="2"/>
+    <text x="702" y="168" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="1">REDUCE</text>
+    <text x="702" y="191" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">GT-kept KTN</text>
+    <text x="659" y="227" fill="#60758a" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">Retain endpoints and slow states</text>
+
+    <rect x="920" y="132" width="230" height="126" rx="18" fill="#ffffff"/>
+    <rect x="920" y="132" width="8" height="126" rx="4" fill="#ef6f6c"/>
+    <circle cx="961" cy="173" r="20" fill="#ffefef"/>
+    <path d="M951 173 L958 180 L972 163" fill="none" stroke="#e65e5a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="992" y="168" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="1">CHECK</text>
+    <text x="992" y="191" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">Kinetic validity</text>
+    <text x="949" y="227" fill="#60758a" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">MFPT · stationarity · spectrum</text>
+  </g>
+
+  <path d="M278 195 H326" stroke="#7890a8" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M568 195 H616" stroke="#7890a8" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M858 195 H906" stroke="#7890a8" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+
+  <path d="M1035 267 V305 H300 V344" fill="none" stroke="#9aabbb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <path d="M1035 305 H900 V344" fill="none" stroke="#9aabbb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <circle cx="1035" cy="305" r="5" fill="#7890a8"/>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="360" width="500" height="172" rx="20" fill="#ffffff"/>
+    <rect x="70" y="360" width="500" height="48" rx="20" fill="url(#blue)"/>
+    <rect x="70" y="388" width="500" height="20" fill="url(#blue)"/>
+    <text x="96" y="391" fill="#ffffff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">Feature track</text>
+    <text x="96" y="438" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700">Graph descriptors</text>
+    <text x="96" y="467" fill="#60758a" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">distance · spectrum · centrality · topology</text>
+    <path d="M303 489 H341" stroke="#7890a8" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="96" y="484" width="198" height="30" rx="15" fill="#eaf3ff"/>
+    <text x="195" y="504" text-anchor="middle" fill="#286fb9" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700">FEATURE TABLE</text>
+    <rect x="352" y="484" width="190" height="30" rx="15" fill="#eaf3ff"/>
+    <text x="447" y="504" text-anchor="middle" fill="#286fb9" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700">REGRESSION</text>
+
+    <rect x="630" y="360" width="500" height="172" rx="20" fill="#ffffff"/>
+    <rect x="630" y="360" width="500" height="48" rx="20" fill="url(#teal)"/>
+    <rect x="630" y="388" width="500" height="20" fill="url(#teal)"/>
+    <text x="656" y="391" fill="#ffffff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">Graph learning track</text>
+    <text x="656" y="438" fill="#16324f" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700">Node and edge tensors</text>
+    <text x="656" y="467" fill="#60758a" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">state weights · rates · branching · endpoints</text>
+    <path d="M863 489 H901" stroke="#7890a8" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="656" y="484" width="198" height="30" rx="15" fill="#e7f8f5"/>
+    <text x="755" y="504" text-anchor="middle" fill="#147d78" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700">PYG DATASET</text>
+    <rect x="912" y="484" width="190" height="30" rx="15" fill="#e7f8f5"/>
+    <text x="1007" y="504" text-anchor="middle" fill="#147d78" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700">GNN MODELS</text>
+  </g>
+
+  <rect x="356" y="560" width="488" height="38" rx="19" fill="url(#navy)"/>
+  <text x="600" y="585" text-anchor="middle" fill="#ffffff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="0.4">RESULTS · FIGURES · THESIS TABLES</text>
+</svg>
+

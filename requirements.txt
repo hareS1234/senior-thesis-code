@@ -1,0 +1,10 @@
+# Tested with Python 3.11.15.
+PyGT==0.3.0
+jupyterlab==4.6.3
+matplotlib==3.10.9
+numpy==2.4.4
+pandas==2.3.3
+scikit-learn==1.9.0
+scipy==1.17.1
+torch==2.11.0
+torch-geometric==2.8.0.post1
