@@ -6,10 +6,6 @@ This repository studies kinetics across a collection of hexapeptide landscapes (
 
 The main workflow builds microscopic KTNs from PATHSAMPLE files, reduces them with PyGT, checks the reduced kinetics, and tests whether network structure predicts kinetic behavior. The included validation table covers 43 landscapes from 30 sequences.
 
-<p align="center">
-  <img src="docs/assets/pipeline.svg" alt="Pipeline from PATHSAMPLE data to graph features, GNNs, and thesis figures" width="100%">
-</p>
-
 ## Research focus
 
 Large energy landscapes can contain tens of thousands of minima. Direct kinetic analysis is expensive and can be numerically delicate. Graph transformation removes low-priority states while retaining the A and B endpoint sets. The reduced network is then checked against the microscopic model.
@@ -25,15 +21,12 @@ The code uses the column convention `i <- j`. For a rate matrix `K` and mean wai
 
 $$
 B_{ij}=K_{ij}\tau_j, \qquad
-Q=K-\operatorname{diag}(\tau^{-1}), \qquad
+Q_{ij}=K_{ij}\;(i\ne j), \qquad
+Q_{jj}=-\tau_j^{-1}, \qquad
 Q\pi=0.
 $$
 
 `A` and `B` are endpoint sets read from `min.A` and `min.B`. The forward committor is fixed to zero on A and one on B. Mean first-passage times, or MFPTs, measure the expected travel time between the sets.
-
-<p align="center">
-  <img src="docs/assets/network-reduction.svg" alt="Energy landscape mapped to a microscopic KTN and a reduced GT-kept KTN" width="100%">
-</p>
 
 ## Repo guide
 
